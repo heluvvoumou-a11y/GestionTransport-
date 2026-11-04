@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TransitGo | Transport de voyageurs</title>
+
+    <link rel="stylesheet" href="css/style.css">
+
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+    <!-- NOTIFICATION -->
+    <div id="toast" class="toast"></div>
+
+    <!-- PAGE DE CONNEXION -->
+    <section id="loginView" class="login-container">
+
+        <div class="login-left">
+            <div class="logo">
+                <span class="logo-icon">T</span>
+                Transit<span>Go</span>
+            </div>
+
+            <div class="login-description">
+                <span class="eyebrow">VOTRE VOYAGE, NOTRE PRIORITÉ</span>
+
+                <h1>Le transport de voyageurs, en toute simplicité.</h1>
+
+                <p>
+                    Une plateforme moderne pour rechercher des départs,
+                    réserver des places et gérer les billets de transport.
+                </p>
+
+                <div class="route-decoration">
+                    <span>●</span>
+                    <div></div>
+                    <span>●</span>
+                    <p>Bamako → Votre destination</p>
+                </div>
+            </div>
+
+            <small>© 2026 TransitGo - Gestion du transport</small>
+        </div>
+
+        <div class="login-right">
+
+            <form id="loginForm" class="login-card">
+
+                <div class="logo dark-logo">
+                    <span class="logo-icon">T</span>
+                    Transit<span>Go</span>
+                </div>
+
+                <span class="eyebrow">ESPACE DE TRAVAIL</span>
+
+                <h2>Bienvenue !</h2>
+
+                <p class="muted">
+                    Connectez-vous pour accéder à votre espace.
+                </p>
+
+                <label for="email">Adresse e-mail</label>
+                <input
+                    type="email"
+                    id="email"
+                    placeholder="nom@exemple.com"
+                    required
+                >
+
+                <label for="password">Mot de passe</label>
+                <input
+                    type="password"
+                    id="password"
+                    placeholder="Votre mot de passe"
+                    required
+                >
+
+                <label for="role">Votre espace</label>
+
+                <select id="role">
+                    <option value="Agent">Agent</option>
+                    <option value="Contrôleur">Contrôleur</option>
+                    <option value="Administrateur">Administrateur</option>
+                </select>
+
+                <button type="submit" class="primary-button">
+                    Se connecter →
+                </button>
+
+                <p class="login-note">
+                    ● Démonstration locale
+                </p>
+
+            </form>
+
+        </div>
+    </section>
+
+
+    <!-- APPLICATION PRINCIPALE -->
+    <div id="appView" class="hidden">
+
+        <!-- MENU LATÉRAL -->
+        <aside class="sidebar" id="sidebar">
+
+            <div class="logo sidebar-logo">
+                <span class="logo-icon">T</span>
+                Transit<span>Go</span>
+            </div>
+
+            <p class="menu-title">MENU PRINCIPAL</p>
+
+            <nav>
+
+                <button class="nav-button active" data-page="dashboard">
+                    ▦ Tableau de bord
+                </button>
+
+                <button class="nav-button" data-page="departures">
+                    ⌁ Rechercher un départ
+                </button>
+
+                <button class="nav-button" data-page="seats">
+                    ▤ Choisir une place
+                </button>
+
+                <button class="nav-button" data-page="tickets">
+                    ▧ Mes billets
+                </button>
+
+                <button class="nav-button" data-page="control">
+                    ✓ Contrôle des billets
+                </button>
+
+            </nav>
+
+            <div class="sidebar-bottom">
+                <p>Besoin d'aide ?</p>
+                <small>Contactez votre responsable.</small>
+
+                <button id="logoutButton" class="logout-button">
+                    ↪ Déconnexion
+                </button>
+            </div>
+
+        </aside>
+
+
+        <!-- CONTENU PRINCIPAL -->
+        <main class="main-content">
+
+            <header class="topbar">
+
+                <div class="breadcrumb">
+                    TransitGo / <strong id="pageTitle">Tableau de bord</strong>
+                </div>
+
+                <div class="user-info">
+                    <div class="avatar" id="avatar">D</div>
+
+                    <div>
+                        <strong id="userName">Diaré</strong>
+                        <small id="userRole">Agent</small>
+                    </div>
+                </div>
+
+            </header>
+
+
+            <div class="content">
+
+
+                <!-- TABLEAU DE BORD -->
+                <section id="dashboard" class="page active">
+
+                    <div class="page-heading">
+                        <div>
+                            <span class="eyebrow">TABLEAU DE BORD</span>
+                            <h1>Bonjour, <span id="helloName">Diaré</span> 👋</h1>
+                            <p class="muted">
+                                Voici le résumé de votre activité.
+                            </p>
+                        </div>
+
+                        <button class="primary-button" data-go="departures">
+                            + Nouveau départ
+                        </button>
+                    </div>
+
+
+                    <div class="stats">
+
+                        <div class="stat-card">
+                            <p>Départs disponibles</p>
+                            <h2 id="departureCount">04</h2>
+                            <small>Trajets programmés</small>
+                        </div>
+
+                        <div class="stat-card">
+                            <p>Billets enregistrés</p>
+                            <h2 id="ticketCount">02</h2>
+                            <small>Billets de démonstration</small>
+                        </div>
+
+                        <div class="stat-card">
+                            <p>Places disponibles</p>
+                            <h2 id="seatCount">76</h2>
+                            <small>Sur les trajets affichés</small>
+                        </div>
+
+                        <div class="stat-card">
+                            <p>Embarquements validés</p>
+                            <h2 id="boardedCount">01</h2>
+                            <small>Contrôles effectués</small>
+                        </div>
+
+                    </div>
+
+
+                    <div class="panel">
+
+                        <div class="panel-heading">
+                            <div>
+                                <h3>Prochains départs</h3>
+                                <p class="muted">Aperçu des trajets programmés</p>
+                            </div>
+
+                            <button class="text-button" data-go="departures">
+                                Tout voir →
+                            </button>
+                        </div>
+
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>TRAJET</th>
+                                        <th>HORAIRE</th>
+                                        <th>PLACES</th>
+                                        <th>TARIF</th>
+                                        <th>ÉTAT</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody id="dashboardRows"></tbody>
+                            </table>
+                        </div>
+
+                    </div>
+
+                </section>
+
+
+                <!-- RECHERCHE DES DÉPARTS -->
+                <section id="departures" class="page">
+
+                    <div class="page-heading">
+                        <div>
+                            <span class="eyebrow">VOYAGES</span>
+                            <h1>Rechercher un départ</h1>
+                            <p class="muted">
+                                Trouvez un trajet selon votre destination.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+
+                        <form id="searchForm" class="search-form">
+
+                            <div>
+                                <label for="fromCity">Ville de départ</label>
+                                <select id="fromCity">
+                                    <option value="">Toutes les villes</option>
+                                    <option>Bamako</option>
+                                    <option>Ségou</option>
+                                    <option>Sikasso</option>
+                                    <option>Mopti</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="toCity">Ville d'arrivée</label>
+                                <select id="toCity">
+                                    <option value="">Toutes les villes</option>
+                                    <option>Bamako</option>
+                                    <option>Ségou</option>
+                                    <option>Sikasso</option>
+                                    <option>Mopti</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="travelDate">Date du voyage</label>
+                                <input type="date" id="travelDate">
+                            </div>
+
+                            <button class="primary-button" type="submit">
+                                Rechercher
+                            </button>
+
+                        </form>
+
+                    </div>
+
+                    <div class="section-heading">
+                        <h3>Départs disponibles</h3>
+                        <span id="resultCount"></span>
+                    </div>
+
+                    <div id="departureResults" class="departure-grid"></div>
+
+                    <div id="emptyDepartures" class="empty-state hidden">
+                        <h3>Aucun départ trouvé</h3>
+                        <p>Essayez une autre ville ou une autre date.</p>
+                    </div>
+
+                </section>
+
+
+                <!-- SÉLECTION DES PLACES -->
+                <section id="seats" class="page">
+
+                    <div class="page-heading">
+                        <div>
+                            <span class="eyebrow">RÉSERVATION</span>
+                            <h1>Choisir une place</h1>
+                            <p class="muted">
+                                Sélectionnez une place disponible.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div id="noDeparture" class="empty-state">
+                        <h3>Aucun départ sélectionné</h3>
+                        <p>Recherchez d'abord un trajet.</p>
+
+                        <button class="primary-button" data-go="departures">
+                            Rechercher un départ
+                        </button>
+                    </div>
+
+                    <div id="bookingArea" class="booking-grid hidden">
+
+                        <div class="panel">
+
+                            <h3 id="tripTitle"></h3>
+                            <p id="tripDetails" class="muted"></p>
+
+                            <div class="seat-legend">
+                                <span>🟦 Disponible</span>
+                                <span>🟩 Sélectionnée</span>
+                                <span>⬜ Indisponible</span>
+                            </div>
+
+                            <div class="bus">
+                                <div class="bus-front">AVANT DU BUS</div>
+
+                                <div id="seatMap" class="seat-map"></div>
+
+                                <div class="bus-back">ARRIÈRE DU BUS</div>
+                            </div>
+
+                        </div>
+
+                        <div class="panel">
+
+                            <h3>Résumé de réservation</h3>
+
+                            <p class="summary-line">
+                                Trajet :
+                                <strong id="summaryRoute">—</strong>
+                            </p>
+
+                            <p class="summary-line">
+                                Place :
+                                <strong id="summarySeat">Aucune</strong>
+                            </p>
+
+                            <p class="summary-line">
+                                Tarif :
+                                <strong id="summaryPrice">—</strong>
+                            </p>
+
+                            <hr>
+
+                            <p class="summary-total">
+                                Total :
+                                <strong id="summaryTotal">—</strong>
+                            </p>
+
+                            <button
+                                id="confirmBooking"
+                                class="primary-button full-button"
+                                disabled
+                            >
+                                Confirmer la réservation
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </section>
+
+
+                <!-- BILLETS -->
+                <section id="tickets" class="page">
+
+                    <div class="page-heading">
+                        <div>
+                            <span class="eyebrow">BILLETTERIE</span>
+                            <h1>Mes billets</h1>
+                            <p class="muted">
+                                Consultez les billets enregistrés.
+                            </p>
+                        </div>
+
+                        <button id="exportTickets" class="secondary-button">
+                            ↓ Exporter CSV
+                        </button>
+                    </div>
+
+                    <div class="panel">
+
+                        <input
+                            id="ticketSearch"
+                            class="search-input"
+                            placeholder="Rechercher un billet..."
+                        >
+
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>RÉFÉRENCE</th>
+                                        <th>VOYAGEUR</th>
+                                        <th>TRAJET</th>
+                                        <th>PLACE</th>
+                                        <th>STATUT</th>
+                                        <th>EMBARQUEMENT</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody id="ticketRows"></tbody>
+                            </table>
+                        </div>
+
+                        <div id="emptyTickets" class="empty-state hidden">
+                            <h3>Aucun billet enregistré</h3>
+                            <p>Les billets créés apparaîtront ici.</p>
+                        </div>
+
+                    </div>
+
+                </section>
+
+
+                <!-- CONTRÔLE DES BILLETS -->
+                <section id="control" class="page">
+
+                    <div class="page-heading">
+                        <div>
+                            <span class="eyebrow">ESPACE CONTRÔLEUR</span>
+                            <h1>Contrôle des billets</h1>
+                            <p class="muted">
+                                Vérifiez les billets avant l'embarquement.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="control-grid">
+
+                        <div class="panel control-panel">
+
+                            <div class="control-icon">✓</div>
+
+                            <h3>Vérifier un billet</h3>
+
+                            <p class="muted">
+                                Entrez la référence présente sur le billet.
+                            </p>
+
+                            <form id="controlForm">
+
+                                <label for="ticketReference">
+                                    Référence du billet
+                                </label>
+
+                                <input
+                                    id="ticketReference"
+                                    placeholder="Exemple : TG-1001"
+                                    required
+                                >
+
+                                <button class="primary-button" type="submit">
+                                    Vérifier le billet
+                                </button>
+
+                            </form>
+
+                            <div id="controlResult" class="control-result hidden"></div>
+
+                        </div>
+
+
+                        <div class="panel">
+
+                            <h3>Règles de contrôle</h3>
+
+                            <div class="rule">
+                                <strong>01</strong>
+                                <div>
+                                    <b>Billet valide</b>
+                                    <p>La référence doit correspondre à un billet existant.</p>
+                                </div>
+                            </div>
+
+                            <div class="rule">
+                                <strong>02</strong>
+                                <div>
+                                    <b>Un seul embarquement</b>
+                                    <p>Un billet déjà contrôlé ne peut pas être accepté une deuxième fois.</p>
+                                </div>
+                            </div>
+
+                            <div class="rule">
+                                <strong>03</strong>
+                                <div>
+                                    <b>Traçabilité</b>
+                                    <p>Le résultat du contrôle doit être conservé.</p>
+                                </div>
+                            </div>
+
+                            <div class="notice">
+                                Ces règles devront également être vérifiées par le backend Django.
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </section>
+
+            </div>
+
+        </main>
+
+    </div>
+
+    <script src="js/app.js"></script>
+
+</body>
+</html>
