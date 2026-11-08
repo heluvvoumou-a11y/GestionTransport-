@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Accueil — Transport Voyageurs{% endblock %}
+{% block content %}
+<section class="panel">
+  <p class="muted">Projet du Groupe 2</p>
+  <h1>Gestion du transport de voyageurs</h1>
+  <p>Une application pour organiser les départs, les réservations, les billets et les encaissements d'une compagnie de transport.</p>
+  <a class="button" href="{% url 'login' %}">Se connecter</a>
+</section>
+<section class="panel">
+  <h2>Première version</h2>
+  <p>Le socle technique est prêt à être lancé. Les modules métier seront ajoutés progressivement et testés avant livraison.</p>
+</section>
+{% endblock %}

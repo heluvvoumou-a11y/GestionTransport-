@@ -1,0 +1,8 @@
+{% extends "base.html" %}{% block content %}<div class="card"><h1>Réservation #{{ r.id }}</h1>
+<p><b>Voyageur :</b> {{ r.passenger_name }} — {{ r.passenger_phone }}</p><p><b>Trajet :</b> {{ r.trip.route }} | {{ r.trip.departure_at|date:"d/m/Y H:i" }}</p>
+<p><b>Siège :</b> {{ r.seat.number }} | <b>Montant :</b> {{ r.amount }} FCFA | <b>Statut :</b> {{ r.get_status_display }}</p>
+<p><b>Expiration :</b> {{ r.hold_expires_at|date:"d/m/Y H:i" }}</p>
+<div class="actions"><a class="btn" href="{% url 'payment_create' r.id %}">Ajouter paiement</a><a class="btn secondary" href="{% url 'refund_reservation' r.id %}">Rembourser</a>
+<form method="post" action="{% url 'cancel_reservation' r.id %}">{% csrf_token %}<button class="btn secondary">Annuler</button></form></div>
+{% if r.ticket %}<p><b>Billet émis :</b> {{ r.ticket.code }}</p>{% endif %}
+<h2>Paiements</h2><table><tr><th>Date</th><th>Montant</th><th>Moyen</th><th>Référence</th></tr>{% for p in payments %}<tr><td>{{ p.paid_at|date:"d/m/Y H:i" }}</td><td>{{ p.amount }}</td><td>{{ p.get_method_display }}</td><td>{{ p.reference }}</td></tr>{% empty %}<tr><td colspan="4">Aucun paiement.</td></tr>{% endfor %}</table></div>{% endblock %}
