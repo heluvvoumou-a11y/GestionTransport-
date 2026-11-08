@@ -1,209 +1,137 @@
-"""F01/F07: operations and transport data. Reservation and Payment belong to Hawa.
-
-The reservation integration uses a logical reservation reference until the shared
-app/model label has been agreed by the team; no duplicate Reservation is defined.
-"""
-from django.core.exceptions import ValidationError
+import uuid
+from django.conf import settings
 from django.db import models
-from django.db.models import F, Q
 from django.utils import timezone
 
-
 class Agency(models.Model):
-    code = models.CharField(max_length=20, unique=True)
-    name = models.CharField(max_length=150)
+    name = models.CharField(max_length=120, unique=True)
     city = models.CharField(max_length=100)
-    address = models.TextField(blank=True)
+    address = models.CharField(max_length=255, blank=True)
     phone = models.CharField(max_length=30, blank=True)
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f"{self.code} — {self.name}"
-
+    def __str__(self): return f"{self.name} ({self.city})"
 
 class Route(models.Model):
-    origin_city = models.CharField(max_length=100)
-    destination_city = models.CharField(max_length=100)
-    estimated_duration_minutes = models.PositiveIntegerField()
-    distance_km = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
-    is_active = models.BooleanField(default=True)
-
+    origin = models.CharField(max_length=100)
+    destination = models.CharField(max_length=100)
+    distance_km = models.PositiveIntegerField(default=0)
+    estimated_minutes = models.PositiveIntegerField(default=0)
     class Meta:
-        constraints = [
-            models.CheckConstraint(condition=~Q(origin_city=F("destination_city")), name="route_distinct_cities"),
-            models.CheckConstraint(condition=Q(estimated_duration_minutes__gt=0), name="route_positive_duration"),
-        ]
-
+        constraints = [models.UniqueConstraint(fields=["origin","destination"], name="unique_route_direction")]
+    def __str__(self): return f"{self.origin} - {self.destination}"
 
 class Driver(models.Model):
-    first_name = models.CharField(max_length=100)
-    last_name = models.CharField(max_length=100)
-    license_number = models.CharField(max_length=60, unique=True)
+    first_name = models.CharField(max_length=80)
+    last_name = models.CharField(max_length=80)
     phone = models.CharField(max_length=30, blank=True)
-    license_expiry = models.DateField()
-    is_active = models.BooleanField(default=True)
-
-    def __str__(self):
-        return f"{self.first_name} {self.last_name}"
-
+    license_number = models.CharField(max_length=80, unique=True)
+    active = models.BooleanField(default=True)
+    def __str__(self): return f"{self.first_name} {self.last_name}"
 
 class Vehicle(models.Model):
-    class Status(models.TextChoices):
-        AVAILABLE = "AVAILABLE", "Disponible"
-        MAINTENANCE = "MAINTENANCE", "Maintenance"
-        OUT_OF_SERVICE = "OUT_OF_SERVICE", "Hors service"
-
-    registration_number = models.CharField(max_length=50, unique=True)
+    registration = models.CharField(max_length=30, unique=True)
     brand = models.CharField(max_length=80, blank=True)
-    model_name = models.CharField(max_length=80, blank=True)
+    model = models.CharField(max_length=80, blank=True)
     capacity = models.PositiveIntegerField()
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.AVAILABLE)
-    notes = models.TextField(blank=True)
-
-    class Meta:
-        constraints = [models.CheckConstraint(condition=Q(capacity__gt=0), name="vehicle_positive_capacity")]
-
+    available = models.BooleanField(default=True)
+    def __str__(self): return f"{self.registration} ({self.capacity} places)"
 
 class Seat(models.Model):
-    vehicle = models.ForeignKey(Vehicle, on_delete=models.PROTECT, related_name="seats")
+    vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE, related_name="seats")
     number = models.PositiveIntegerField()
-    label = models.CharField(max_length=20, blank=True)
-    is_active = models.BooleanField(default=True)
-
     class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=["vehicle", "number"], name="seat_vehicle_number_unique"),
-            models.CheckConstraint(condition=Q(number__gt=0), name="seat_number_positive"),
-        ]
+        constraints = [models.UniqueConstraint(fields=["vehicle","number"], name="unique_vehicle_seat")]
+        ordering = ["number"]
+    def __str__(self): return f"{self.vehicle.registration} - {self.number}"
 
-    def clean(self):
-        if self.vehicle_id and self.is_active:
-            active_count = Seat.objects.filter(vehicle_id=self.vehicle_id, is_active=True).exclude(pk=self.pk).count()
-            if active_count >= self.vehicle.capacity:
-                raise ValidationError("La capacité du véhicule serait dépassée.")
-
-
-class Departure(models.Model):
-    class Status(models.TextChoices):
-        PLANNED = "PLANNED", "Planifié"
-        OPEN = "OPEN", "Ouvert"
-        COMPLETED = "COMPLETED", "Terminé"
-        CANCELLED = "CANCELLED", "Annulé"
-
-    route = models.ForeignKey(Route, on_delete=models.PROTECT, related_name="departures")
-    agency = models.ForeignKey(Agency, on_delete=models.PROTECT, related_name="departures")
-    vehicle = models.ForeignKey(Vehicle, on_delete=models.PROTECT, related_name="departures")
-    driver = models.ForeignKey(Driver, on_delete=models.PROTECT, related_name="departures")
+class Trip(models.Model):
+    STATUS = [("PLANNED","Planifié"),("BOARDING","Embarquement"),("DEPARTED","Parti"),("ARRIVED","Arrivé"),("CANCELLED","Annulé")]
+    route = models.ForeignKey(Route, on_delete=models.PROTECT, related_name="trips")
+    agency = models.ForeignKey(Agency, on_delete=models.PROTECT, related_name="trips")
+    vehicle = models.ForeignKey(Vehicle, on_delete=models.PROTECT, related_name="trips")
+    driver = models.ForeignKey(Driver, on_delete=models.PROTECT, related_name="trips")
     departure_at = models.DateTimeField()
-    planned_arrival_at = models.DateTimeField()
-    preparation_minutes = models.PositiveIntegerField(default=30)
-    fare_xof = models.PositiveIntegerField()
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PLANNED)
+    arrival_at = models.DateTimeField(null=True, blank=True)
+    price = models.PositiveIntegerField(help_text="Prix en FCFA")
+    status = models.CharField(max_length=15, choices=STATUS, default="PLANNED")
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    def __str__(self): return f"{self.route} - {self.departure_at:%d/%m/%Y %H:%M}"
+    @property
+    def active_reservations(self):
+        return self.reservations.filter(status__in=["HOLD","CONFIRMED"]).count()
 
+class Reservation(models.Model):
+    STATUS = [("HOLD","En attente"),("CONFIRMED","Confirmée"),("CANCELLED","Annulée"),("EXPIRED","Expirée"),("REFUNDED","Remboursée")]
+    trip = models.ForeignKey(Trip, on_delete=models.PROTECT, related_name="reservations")
+    seat = models.ForeignKey(Seat, on_delete=models.PROTECT, related_name="reservations")
+    passenger_name = models.CharField(max_length=160)
+    passenger_phone = models.CharField(max_length=30)
+    passenger_document = models.CharField(max_length=80, blank=True)
+    amount = models.PositiveIntegerField()
+    status = models.CharField(max_length=15, choices=STATUS, default="HOLD")
+    hold_expires_at = models.DateTimeField()
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL)
+    created_at = models.DateTimeField(auto_now_add=True)
     class Meta:
-        constraints = [
-            models.CheckConstraint(condition=Q(planned_arrival_at__gt=F("departure_at")), name="departure_arrival_after_start"),
-        ]
-        indexes = [models.Index(fields=["departure_at", "status"])]
+        constraints = [models.UniqueConstraint(
+            fields=["trip","seat"],
+            condition=models.Q(status__in=["HOLD","CONFIRMED"]),
+            name="unique_active_trip_seat",
+        )]
+        ordering = ["-created_at"]
+    def __str__(self): return f"Réservation #{self.pk} - {self.passenger_name}"
 
-    def clean(self):
-        if self.departure_at and self.planned_arrival_at and self.planned_arrival_at <= self.departure_at:
-            raise ValidationError("L'arrivée doit suivre le départ.")
-        if self.vehicle_id and self.vehicle.status != Vehicle.Status.AVAILABLE:
-            raise ValidationError("Véhicule indisponible.")
-        if self.driver_id and (not self.driver.is_active or self.driver.license_expiry < timezone.localdate()):
-            raise ValidationError("Conducteur inactif ou permis expiré.")
+class Payment(models.Model):
+    METHOD = [("CASH","Espèces"),("MOBILE","Mobile money (simulation)"),("CARD","Carte (simulation)")]
+    reservation = models.ForeignKey(Reservation, on_delete=models.PROTECT, related_name="payments")
+    amount = models.PositiveIntegerField()
+    method = models.CharField(max_length=10, choices=METHOD, default="CASH")
+    reference = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    paid_at = models.DateTimeField(default=timezone.now)
+    received_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL)
+    def __str__(self): return f"Paiement {self.reference} - {self.amount} FCFA"
 
+class Ticket(models.Model):
+    reservation = models.OneToOneField(Reservation, on_delete=models.PROTECT, related_name="ticket")
+    code = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    issued_at = models.DateTimeField(auto_now_add=True)
+    checked = models.BooleanField(default=False)
+    def __str__(self): return f"Billet {self.code}"
 
-class DepartureSeat(models.Model):
-    departure = models.ForeignKey(Departure, on_delete=models.PROTECT, related_name="seat_inventory")
-    seat = models.ForeignKey(Seat, on_delete=models.PROTECT, related_name="departure_inventory")
-    is_sellable = models.BooleanField(default=True)
+class Boarding(models.Model):
+    ticket = models.OneToOneField(Ticket, on_delete=models.PROTECT, related_name="boarding")
+    checked_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL)
+    checked_at = models.DateTimeField(auto_now_add=True)
 
-    class Meta:
-        constraints = [models.UniqueConstraint(fields=["departure", "seat"], name="departure_seat_unique")]
-
-    def clean(self):
-        if self.departure_id and self.seat_id and self.departure.vehicle_id != self.seat.vehicle_id:
-            raise ValidationError("Le siège n'appartient pas au véhicule du départ.")
-        if self.seat_id and not self.seat.is_active and self.is_sellable:
-            raise ValidationError("Un siège inactif ne peut pas être commercialisable.")
-
-
-class VehicleReplacement(models.Model):
-    class Status(models.TextChoices):
-        PROPOSED = "PROPOSED", "Proposé"
-        APPROVED = "APPROVED", "Approuvé"
-        REJECTED = "REJECTED", "Rejeté"
-        EXECUTED = "EXECUTED", "Exécuté"
-
-    departure = models.ForeignKey(Departure, on_delete=models.PROTECT, related_name="replacements")
-    old_vehicle = models.ForeignKey(Vehicle, on_delete=models.PROTECT, related_name="replacements_out")
-    new_vehicle = models.ForeignKey(Vehicle, on_delete=models.PROTECT, related_name="replacements_in")
-    reason = models.TextField()
-    status = models.CharField(max_length=12, choices=Status.choices, default=Status.PROPOSED)
-    proposed_by_id = models.PositiveBigIntegerField(null=True, blank=True)  # user module to integrate
-    approved_by_id = models.PositiveBigIntegerField(null=True, blank=True)
-    decision_at = models.DateTimeField(null=True, blank=True)
-    executed_at = models.DateTimeField(null=True, blank=True)
+class Refund(models.Model):
+    reservation = models.ForeignKey(Reservation, on_delete=models.PROTECT, related_name="refunds")
+    amount = models.PositiveIntegerField()
+    reason = models.CharField(max_length=255)
+    reference = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    refunded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL)
     created_at = models.DateTimeField(auto_now_add=True)
 
-    class Meta:
-        constraints = [models.CheckConstraint(condition=~Q(old_vehicle=F("new_vehicle")), name="replacement_distinct_vehicles")]
+class Luggage(models.Model):
+    reservation = models.ForeignKey(Reservation, on_delete=models.PROTECT, related_name="luggages")
+    description = models.CharField(max_length=180)
+    weight_kg = models.DecimalField(max_digits=6, decimal_places=2, default=0)
+    supplement = models.PositiveIntegerField(default=0)
+    tag = models.UUIDField(default=uuid.uuid4, unique=True)
+    delivered = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
 
+class CashSession(models.Model):
+    agency = models.ForeignKey(Agency, on_delete=models.PROTECT)
+    opened_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="cash_sessions_opened")
+    opened_at = models.DateTimeField(auto_now_add=True)
+    opening_amount = models.PositiveIntegerField(default=0)
+    closed_at = models.DateTimeField(null=True, blank=True)
+    closing_amount = models.PositiveIntegerField(null=True, blank=True)
+    notes = models.TextField(blank=True)
 
-class BaggageCategory(models.Model):
-    name = models.CharField(max_length=100, unique=True)
-    default_supplement_xof = models.PositiveIntegerField(default=0)
-    max_weight_kg = models.DecimalField(max_digits=7, decimal_places=2, null=True, blank=True)
-    max_pieces_per_passenger = models.PositiveIntegerField(default=1)
-    is_active = models.BooleanField(default=True)
-
-
-class Baggage(models.Model):
-    class Status(models.TextChoices):
-        REGISTERED = "REGISTERED", "Enregistré"
-        DEPOSITED = "DEPOSITED", "Déposé"
-        DELIVERED = "DELIVERED", "Remis"
-        REFUSED = "REFUSED", "Refusé"
-        CANCELLED = "CANCELLED", "Annulé"
-
-    reservation_reference = models.CharField(max_length=100, db_index=True)  # replace with FK after Hawa app integration
-    category = models.ForeignKey(BaggageCategory, on_delete=models.PROTECT)
-    piece_count = models.PositiveIntegerField(default=1)
-    measured_weight_kg = models.DecimalField(max_digits=7, decimal_places=2, null=True, blank=True)
-    supplement_xof = models.PositiveIntegerField(default=0)
-    status = models.CharField(max_length=12, choices=Status.choices, default=Status.REGISTERED)
-    receipt_reference = models.CharField(max_length=100, unique=True)
-    recorded_by_id = models.PositiveBigIntegerField(null=True, blank=True)
-    deposited_at = models.DateTimeField(null=True, blank=True)
-    delivered_at = models.DateTimeField(null=True, blank=True)
-
-    class Meta:
-        constraints = [models.CheckConstraint(condition=Q(piece_count__gt=0), name="baggage_pieces_positive")]
-
-    def clean(self):
-        if self.category_id:
-            if self.piece_count > self.category.max_pieces_per_passenger:
-                raise ValidationError("Nombre de pièces supérieur à la limite de la catégorie.")
-            if self.measured_weight_kg is not None and self.category.max_weight_kg is not None:
-                if self.measured_weight_kg > self.category.max_weight_kg:
-                    raise ValidationError("Poids supérieur à la limite de la catégorie.")
-
-
-class BaggageEvent(models.Model):
-    baggage = models.ForeignKey(Baggage, on_delete=models.PROTECT, related_name="events")
-    event_type = models.CharField(max_length=30)
-    occurred_at = models.DateTimeField(default=timezone.now)
-    actor_id = models.PositiveBigIntegerField(null=True, blank=True)
-    note = models.TextField(blank=True)
-
-
-class BaggagePaymentLink(models.Model):
-    baggage = models.OneToOneField(Baggage, on_delete=models.PROTECT, related_name="payment_link")
-    payment_reference = models.CharField(max_length=100)  # reference to Hawa's Payment, NOT a payment ledger
-    amount_xof = models.PositiveIntegerField()
-    payment_status = models.CharField(max_length=20)
-    idempotency_key = models.CharField(max_length=100, unique=True)
+class CashEntry(models.Model):
+    session = models.ForeignKey(CashSession, on_delete=models.PROTECT, related_name="entries")
+    payment = models.ForeignKey(Payment, null=True, blank=True, on_delete=models.PROTECT)
+    label = models.CharField(max_length=180)
+    amount = models.IntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)

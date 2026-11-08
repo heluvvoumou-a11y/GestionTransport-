@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Tableau de bord — Transport Voyageurs{% endblock %}
+{% block content %}
+<section class="panel">
+  <p class="muted">Session ouverte</p>
+  <h1>Tableau de bord</h1>
+  <p>Bienvenue, {{ request.user.get_username }}.</p>
+  <p>Cette première version valide la connexion et la navigation. Les indicateurs de départs, réservations et recettes seront branchés sur les données métier dans les prochaines étapes.</p>
+  <a class="button" href="{% url 'operations-index' %}">Ouvrir les opérations</a>
+</section>
+{% endblock %}

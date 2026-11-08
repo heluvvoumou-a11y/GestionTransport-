@@ -1,0 +1,10 @@
+{% extends "base.html" %}{% block content %}
+<h1>Tableau de bord</h1><p class="muted">Bienvenue {{ request.user.username }} — synthèse des opérations.</p>
+<div class="grid">
+<div class="card"><div class="muted">Départs planifiés</div><div class="metric">{{ trip_count }}</div></div>
+<div class="card"><div class="muted">Réservations actives</div><div class="metric">{{ reservation_count }}</div></div>
+<div class="card"><div class="muted">Paiements enregistrés</div><div class="metric">{{ payment_total }} FCFA</div></div>
+</div>
+<div class="card"><div class="actions"><a class="btn" href="{% url 'trip_create' %}">Créer un départ</a><a class="btn" href="{% url 'reservation_create' %}">Nouvelle réservation</a></div></div>
+<div class="card"><h2>Prochains départs</h2><table><tr><th>Trajet</th><th>Date</th><th>Véhicule</th><th>Prix</th><th>Statut</th></tr>
+{% for t in recent_trips %}<tr><td>{{ t.route }}</td><td>{{ t.departure_at|date:"d/m/Y H:i" }}</td><td>{{ t.vehicle.registration }}</td><td>{{ t.price }} FCFA</td><td>{{ t.get_status_display }}</td></tr>{% empty %}<tr><td colspan="5">Aucun départ. Créez-en un depuis le menu Départs.</td></tr>{% endfor %}</table></div>{% endblock %}

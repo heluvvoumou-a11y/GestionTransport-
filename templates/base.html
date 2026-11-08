@@ -1,0 +1,22 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Transport voyageurs{% endblock %}</title>
+<style>
+:root{--navy:#14243a;--blue:#2463eb;--bg:#f3f6fb;--text:#1e293b}*{box-sizing:border-box}body{margin:0;font:15px Arial,sans-serif;background:var(--bg);color:var(--text)}
+header{background:var(--navy);color:white;padding:16px 4%;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+header a{color:white;text-decoration:none;margin-right:14px}.brand{font-weight:bold;font-size:18px}
+main{max-width:1180px;margin:26px auto;padding:0 16px}.card{background:white;border-radius:12px;padding:20px;margin-bottom:18px;box-shadow:0 2px 12px #12243a0d}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px}.metric{font-size:28px;font-weight:bold;color:var(--blue)}
+.btn{display:inline-block;background:var(--blue);color:white;padding:10px 14px;border:0;border-radius:7px;text-decoration:none;cursor:pointer}.btn.secondary{background:#475569}
+table{width:100%;border-collapse:collapse;background:white}th,td{text-align:left;padding:11px;border-bottom:1px solid #e5eaf1}th{background:#f8fafc}
+input,select,textarea{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:6px;margin:5px 0 12px}
+label{font-weight:bold}.messages{padding:0;list-style:none}.messages li{background:#e0f2fe;padding:12px;border-radius:7px;margin:8px 0}
+.errorlist{color:#b91c1c}.muted{color:#64748b}.actions{display:flex;gap:8px;flex-wrap:wrap}
+@media(max-width:600px){header{align-items:flex-start}header nav{display:flex;flex-wrap:wrap;gap:8px}main{margin:14px auto}.card{padding:15px}table{font-size:13px}th,td{padding:8px}}
+</style></head><body>
+<header><div class="brand">🚌 Transport Voyageurs</div><nav>
+{% if user.is_authenticated %}
+<a href="{% url 'dashboard' %}">Tableau de bord</a><a href="{% url 'trip_list' %}">Départs</a><a href="{% url 'reservation_list' %}">Réservations</a><a href="{% url 'ticket_list' %}">Billets</a><a href="{% url 'ticket_check' %}">Contrôle</a><a href="{% url 'luggage_list' %}">Bagages</a><a href="/admin/">Administration</a>
+<form method="post" action="{% url 'logout' %}" style="display:inline">{% csrf_token %}<button class="btn secondary" type="submit">Déconnexion</button></form>
+{% endif %}</nav></header>
+<main>{% if messages %}<ul class="messages">{% for message in messages %}<li>{{ message }}</li>{% endfor %}</ul>{% endif %}
+{% block content %}{% endblock %}</main></body></html>
