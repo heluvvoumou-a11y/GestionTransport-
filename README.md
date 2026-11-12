@@ -27,6 +27,17 @@ Compte de démonstration créé par `seed_demo` :
 - Mot de passe : `Admin12345!`
 Changez ce mot de passe après la première connexion. Ce compte est uniquement destiné au développement local.
 
+## API REST pour le frontend HTML/CSS/JavaScript
+
+Django REST Framework, JWT et CORS sont inclus dans `requirements.txt`.
+Consultez `docs/api.md` pour les URLs, méthodes HTTP, exemples JSON et l'authentification.
+
+Après installation des dépendances, lancez le backend avec :
+```powershell
+python manage.py runserver 0.0.0.0:8000
+```
+L'API est disponible à `http://127.0.0.1:8000/api/`. Pour connecter un autre ordinateur du réseau local, utilisez l'adresse IPv4 du PC serveur et configurez `CORS_ALLOWED_ORIGINS` pour l'origine exacte du frontend.
+
 ## Administration
 http://127.0.0.1:8000/admin/
 

@@ -10,3 +10,16 @@ media/
 .coverage
 .idea/
 .vscode/
+
+# Sauvegardes de bases de donnees
+db.sqlite3*
+*.sqlite3
+
+# Environnements Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# Fichiers temporaires
+*.log
