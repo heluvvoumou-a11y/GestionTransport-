@@ -104,12 +104,58 @@ class Boarding(models.Model):
     checked_at = models.DateTimeField(auto_now_add=True)
 
 class Refund(models.Model):
-    reservation = models.ForeignKey(Reservation, on_delete=models.PROTECT, related_name="refunds")
+    STATUS_CHOICES = [
+        ("PENDING", "En attente"),
+        ("APPROVED", "Approuvé"),
+        ("REJECTED", "Refusé"),
+    ]
+
+    reservation = models.ForeignKey(
+        Reservation,
+        on_delete=models.PROTECT,
+        related_name="refunds"
+    )
+
     amount = models.PositiveIntegerField()
     reason = models.CharField(max_length=255)
-    reference = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
-    refunded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL)
+
+    reference = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        editable=False
+    )
+
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default="PENDING"
+    )
+
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="refund_requests"
+    )
+
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="refunds_approved"
+    )
+
+    refunded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="refunds_executed"
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
 
 class Luggage(models.Model):
     reservation = models.ForeignKey(Reservation, on_delete=models.PROTECT, related_name="luggages")
