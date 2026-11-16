@@ -1,1813 +1,1902 @@
 /* =========================================================
-   TRANSITGO - APPLICATION FRONTEND
-   Démonstration locale avec localStorage
-
-   IMPORTANT :
-   - Les données sont enregistrées dans le navigateur.
-   - Le paiement est simulé.
-   - L'authentification et les permissions réelles
-     devront être assurées par le backend Django.
+   TRANSITGO - APPLICATION FRONTEND CONNECTÉE À DJANGO
+   Navigation, réservation, paiements et modification départs
 ========================================================= */
 
+const API = window.TransitAPI;
 
-/* =========================================================
-   1. CONFIGURATION ET DONNÉES
-========================================================= */
-
-const STORAGE_KEYS = {
-    departures: "transitgo_departures",
-    tickets: "transitgo_tickets",
-    users: "transitgo_users"
+const ROLE_LABELS = {
+    AGENT: "Agent de guichet",
+    CONTROLEUR: "Contrôleur",
+    CAISSIER: "Caissier",
+    EXPLOITATION: "Responsable exploitation",
+    RESPONSABLE: "Responsable compagnie"
 };
 
-const rolePages = {
-    Agent: ["dashboard", "departures", "seats", "tickets"],
-    "Contrôleur": ["dashboard", "tickets", "control"],
-    Administrateur: [
-        "dashboard",
-        "tickets",
-        "admin",
-        "adminTickets",
-        "adminUsers"
-    ]
+const PAGE_TITLES = {
+    dashboard: "Tableau de bord",
+    departures: "Départs",
+    booking: "Réservation",
+    tickets: "Billets",
+    control: "Contrôle des billets",
+    payments: "Paiements",
+    refunds: "Remboursements",
+    resources: "Gestion des ressources",
+    users: "Gestion des utilisateurs",
+    agencies: "Gestion des agences"
 };
 
 let currentUser = null;
-let selectedDeparture = null;
-let selectedSeat = null;
+let currentPage = "dashboard";
+let selectedTrip = null;
+let editingTripId = null;
 
+let trips = [];
+let routes = [];
+let agencies = [];
+let vehicles = [];
+let drivers = [];
+let reservations = [];
+let tickets = [];
+let payments = [];
+let refunds = [];
+let users = [];
+let seats = [];
+
+const $ = id => document.getElementById(id);
 
 /* =========================================================
-   2. OUTILS GÉNÉRAUX
+   1. OUTILS GÉNÉRAUX
 ========================================================= */
 
-function getData(key, fallback = []) {
-    try {
-        const data = localStorage.getItem(key);
-        return data ? JSON.parse(data) : fallback;
-    } catch (error) {
-        console.error("Erreur de lecture des données :", error);
-        return fallback;
-    }
-}
-
-function saveData(key, data) {
-    localStorage.setItem(key, JSON.stringify(data));
-}
-
-function getDepartures() {
-    return getData(STORAGE_KEYS.departures, []);
-}
-
-function getTickets() {
-    return getData(STORAGE_KEYS.tickets, []);
-}
-
-function getUsers() {
-    return getData(STORAGE_KEYS.users, []);
-}
-
-function saveDepartures(data) {
-    saveData(STORAGE_KEYS.departures, data);
-}
-
-function saveTickets(data) {
-    saveData(STORAGE_KEYS.tickets, data);
-}
-
-function saveUsers(data) {
-    saveData(STORAGE_KEYS.users, data);
-}
-
 function escapeHTML(value) {
-    return String(value ?? "").replace(/[&<>"']/g, character => {
-        const entities = {
-            "&": "&amp;",
-            "<": "&lt;",
-            ">": "&gt;",
-            '"': "&quot;",
-            "'": "&#039;"
-        };
-
-        return entities[character];
-    });
+    return String(value ?? "").replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+    })[char]);
 }
 
-function formatMoney(amount) {
-    return Number(amount || 0).toLocaleString("fr-FR") + " FCFA";
+function money(value) {
+    return `${Number(value || 0).toLocaleString("fr-FR")} FCFA`;
 }
 
-function formatDate(date) {
-    if (!date) return "Non renseignée";
+function dateText(value) {
+    if (!value) return "Non renseigné";
 
-    const parts = date.split("-");
+    const date = new Date(value);
 
-    if (parts.length !== 3) return date;
+    if (Number.isNaN(date.getTime())) {
+        return "Date non valide";
+    }
 
-    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    return date.toLocaleString("fr-FR");
 }
 
-function todayString() {
-    const date = new Date();
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
+function dateTimeLocal(value) {
+    if (!value) return "";
 
-    return `${year}-${month}-${day}`;
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) return "";
+
+    const offset = date.getTimezoneOffset() * 60000;
+
+    return new Date(date.getTime() - offset)
+        .toISOString()
+        .slice(0, 16);
 }
 
-function showToast(message, type = "success") {
-    const toast = document.getElementById("toast");
+function getRelationId(value) {
+    if (value && typeof value === "object") {
+        return value.id ?? "";
+    }
 
+    return value ?? "";
+}
+
+function notify(message, isError = false) {
+    const toast = $("toast");
     if (!toast) return;
 
     toast.textContent = message;
-    toast.classList.remove("hidden", "success", "error", "warning");
-    toast.classList.add(type);
+    toast.dataset.type = isError ? "error" : "success";
+    toast.classList.add("visible");
 
-    window.clearTimeout(showToast.timeout);
+    window.setTimeout(() => {
+        toast.classList.remove("visible");
+    }, 4000);
+}
 
-    showToast.timeout = window.setTimeout(() => {
-        toast.classList.add("hidden");
-    }, 3500);
+function showError(error) {
+    console.error("TransitGo :", error);
+    notify(error?.message || "Une erreur est survenue.", true);
+}
+
+function setButtonLoading(button, loading, text = "Chargement...") {
+    if (!button) return;
+
+    const isInput = button.tagName === "INPUT";
+    const property = isInput ? "value" : "textContent";
+
+    if (loading) {
+        if (!button.dataset.originalText) {
+            button.dataset.originalText = button[property];
+        }
+
+        button.disabled = true;
+        button[property] = text;
+    } else {
+        button.disabled = false;
+
+        if (button.dataset.originalText !== undefined) {
+            button[property] = button.dataset.originalText;
+            delete button.dataset.originalText;
+        }
+    }
+}
+
+function hasRole(...roles) {
+    return Boolean(currentUser && roles.includes(currentUser.role));
+}
+
+function requireRole(...roles) {
+    if (!hasRole(...roles)) {
+        throw new Error("Tu n'as pas l'autorisation d'effectuer cette opération.");
+    }
 }
 
 function setText(id, value) {
-    const element = document.getElementById(id);
-
-    if (element) {
-        element.textContent = value;
-    }
+    const element = $(id);
+    if (element) element.textContent = value;
 }
-
-function showElement(id) {
-    const element = document.getElementById(id);
-    if (element) element.classList.remove("hidden");
-}
-
-function hideElement(id) {
-    const element = document.getElementById(id);
-    if (element) element.classList.add("hidden");
-}
-
-function isCancelled(ticket) {
-    return ticket.status === "Annulé" ||
-        ticket.status === "Annule" ||
-        ticket.cancelled === true;
-}
-
-function isPaid(ticket) {
-    return ticket.paymentStatus === "Payé" ||
-        ticket.paymentStatus === "Payé (simulation)";
-}
-
-function getTicketStatus(ticket) {
-    if (isCancelled(ticket)) return "Annulé";
-    if (ticket.boarded) return "Embarqué";
-    if (isPaid(ticket)) return "Payé";
-
-    return "En attente";
-}
-
-function statusBadge(status) {
-    let cssClass = "status-pending";
-
-    if (status === "Payé") cssClass = "status-paid";
-    if (status === "Annulé") cssClass = "status-cancelled";
-    if (status === "Embarqué") cssClass = "status-boarded";
-
-    return `<span class="status-badge ${cssClass}">${escapeHTML(status)}</span>`;
-}
-
 
 /* =========================================================
-   3. DONNÉES INITIALES
+   2. NAVIGATION ET GESTION DES RÔLES
 ========================================================= */
 
-function initializeData() {
-    const existingDepartures = getData(STORAGE_KEYS.departures, null);
-    const existingTickets = getData(STORAGE_KEYS.tickets, null);
-    const existingUsers = getData(STORAGE_KEYS.users, null);
-
-    if (existingDepartures === null) {
-        const departures = [
-            {
-                id: "DEP-001",
-                from: "Bamako",
-                to: "Ségou",
-                date: todayString(),
-                time: "08:00",
-                price: 5000,
-                totalSeats: 30,
-                seats: 30
-            },
-            {
-                id: "DEP-002",
-                from: "Bamako",
-                to: "Sikasso",
-                date: todayString(),
-                time: "09:30",
-                price: 7500,
-                totalSeats: 30,
-                seats: 30
-            },
-            {
-                id: "DEP-003",
-                from: "Bamako",
-                to: "Mopti",
-                date: todayString(),
-                time: "07:00",
-                price: 10000,
-                totalSeats: 35,
-                seats: 35
-            },
-            {
-                id: "DEP-004",
-                from: "Ségou",
-                to: "Bamako",
-                date: todayString(),
-                time: "14:00",
-                price: 5000,
-                totalSeats: 30,
-                seats: 30
-            }
-        ];
-
-        saveDepartures(departures);
-    }
-
-    if (existingTickets === null) {
-        const tickets = [
-            {
-                id: "TKT-001",
-                reference: "TG-1001",
-                departureId: "DEP-001",
-                passengerName: "Aminata Traoré",
-                passengerPhone: "70000001",
-                from: "Bamako",
-                to: "Ségou",
-                date: todayString(),
-                time: "08:00",
-                seat: 1,
-                price: 5000,
-                paymentMethod: "Orange Money",
-                paymentStatus: "Payé (simulation)",
-                status: "Payé",
-                boarded: false,
-                cancelled: false,
-                createdAt: new Date().toISOString()
-            },
-            {
-                id: "TKT-002",
-                reference: "TG-1002",
-                departureId: "DEP-002",
-                passengerName: "Moussa Diallo",
-                passengerPhone: "70000002",
-                from: "Bamako",
-                to: "Sikasso",
-                date: todayString(),
-                time: "09:30",
-                seat: 2,
-                price: 7500,
-                paymentMethod: "Moov Money",
-                paymentStatus: "Payé (simulation)",
-                status: "Payé",
-                boarded: false,
-                cancelled: false,
-                createdAt: new Date().toISOString()
-            }
-        ];
-
-        saveTickets(tickets);
-
-        // Les places des billets de démonstration sont occupées.
-        const departures = getDepartures();
-
-        tickets.forEach(ticket => {
-            const departure = departures.find(
-                item => item.id === ticket.departureId
-            );
-
-            if (departure && !isCancelled(ticket)) {
-                departure.seats = Math.max(0, departure.seats - 1);
-            }
-        });
-
-        saveDepartures(departures);
-    }
-
-    if (existingUsers === null) {
-        saveUsers([
-            {
-                id: "USR-001",
-                name: "Agent Démonstration",
-                email: "agent@transitgo.test",
-                role: "Agent",
-                active: true
-            },
-            {
-                id: "USR-002",
-                name: "Contrôleur Démonstration",
-                email: "controleur@transitgo.test",
-                role: "Contrôleur",
-                active: true
-            },
-            {
-                id: "USR-003",
-                name: "Administrateur Démonstration",
-                email: "admin@transitgo.test",
-                role: "Administrateur",
-                active: true
-            }
-        ]);
-    }
-
-    // Compatibilité avec les anciennes données de démonstration.
-    normalizeDepartures();
-    normalizeTickets();
-}
-
-function normalizeDepartures() {
-    const departures = getDepartures();
-
-    departures.forEach(departure => {
-        if (departure.totalSeats === undefined) {
-            departure.totalSeats = Number(departure.seats || 0);
-        }
-
-        if (departure.seats === undefined) {
-            departure.seats = departure.totalSeats;
-        }
-    });
-
-    saveDepartures(departures);
-}
-
-function normalizeTickets() {
-    const tickets = getTickets();
-
-    tickets.forEach(ticket => {
-        if (ticket.cancelled === undefined) {
-            ticket.cancelled = false;
-        }
-
-        if (ticket.boarded === undefined) {
-            ticket.boarded = false;
-        }
-
-        if (!ticket.status) {
-            ticket.status = isCancelled(ticket)
-                ? "Annulé"
-                : ticket.boarded
-                    ? "Embarqué"
-                    : isPaid(ticket)
-                        ? "Payé"
-                        : "En attente";
-        }
-    });
-
-    saveTickets(tickets);
-}
-
-
-/* =========================================================
-   4. CONNEXION ET DÉCONNEXION
-========================================================= */
-
-function login(event) {
-    event.preventDefault();
-
-    const email = document.getElementById("email").value.trim();
-    const password = document.getElementById("password").value;
-    const role = document.getElementById("role").value;
-
-    if (!email || !password || !role) {
-        showToast("Veuillez remplir tous les champs.", "error");
-        return;
-    }
-
-    // Simulation locale seulement.
-    // En production, Django devra authentifier l'utilisateur
-    // et fournir son véritable rôle.
-    currentUser = {
-        email,
-        role,
-        name: email.split("@")[0]
-    };
-
-    const demoUsers = getUsers();
-    const knownUser = demoUsers.find(
-        user => user.email.toLowerCase() === email.toLowerCase()
-    );
-
-    if (knownUser && knownUser.active === false) {
-        showToast("Ce compte est désactivé dans la démonstration.", "error");
-        return;
-    }
-
-    if (knownUser) {
-        currentUser.name = knownUser.name;
-        currentUser.role = knownUser.role;
-    }
-
-    hideElement("loginView");
-    showElement("appView");
-
-    setText("userName", currentUser.name);
-    setText("userRole", currentUser.role);
-
-    configureInterface();
-    navigate("dashboard");
-
-    showToast("Connexion réussie.");
-}
-
-function logout() {
-    currentUser = null;
-    selectedDeparture = null;
-    selectedSeat = null;
-
-    hideElement("appView");
-    showElement("loginView");
-
-    document.getElementById("loginForm").reset();
-
-    showToast("Vous êtes déconnecté.");
-}
-
-
-/* =========================================================
-   5. NAVIGATION ET RÔLES
-========================================================= */
-
-function configureInterface() {
-    if (!currentUser) return;
-
-    const allowedPages = rolePages[currentUser.role] || [];
-
-    document.querySelectorAll("[data-page]").forEach(button => {
-        const page = button.dataset.page;
-        const allowed = allowedPages.includes(page);
-
-        button.classList.toggle("hidden", !allowed);
-    });
-
+function configureNavigation() {
     document.querySelectorAll("[data-roles]").forEach(element => {
-        const roles = element.dataset.roles
+        const allowed = element.dataset.roles
             .split(",")
             .map(role => role.trim());
 
-        element.classList.toggle(
-            "hidden",
-            !roles.includes(currentUser.role)
+        element.hidden = !allowed.includes(currentUser.role);
+    });
+
+    document.querySelectorAll("[data-page]").forEach(button => {
+        const page = button.dataset.page;
+
+        const allowed = button.dataset.roles
+            ? button.dataset.roles.split(",").map(role => role.trim())
+            : null;
+
+        button.hidden = Boolean(
+            allowed && !allowed.includes(currentUser.role)
         );
+
+        if (button.dataset.navigationReady === "true") return;
+
+        button.dataset.navigationReady = "true";
+
+        button.addEventListener("click", () => {
+            if (button.hidden) return;
+            openPage(page);
+        });
     });
 }
 
-function navigate(page) {
-    if (!currentUser) return;
+function canOpenPage(page) {
+    const permissions = {
+        dashboard: [
+            "AGENT",
+            "CONTROLEUR",
+            "CAISSIER",
+            "EXPLOITATION",
+            "RESPONSABLE"
+        ],
+        departures: [
+            "AGENT",
+            "EXPLOITATION",
+            "RESPONSABLE"
+        ],
+        booking: ["AGENT"],
+        tickets: [
+            "AGENT",
+            "EXPLOITATION",
+            "CONTROLEUR",
+            "RESPONSABLE"
+        ],
+        control: ["CONTROLEUR", "RESPONSABLE"],
+        payments: ["CAISSIER", "RESPONSABLE"],
+        refunds: ["CAISSIER", "RESPONSABLE"],
+        resources: ["EXPLOITATION", "RESPONSABLE"],
+        users: ["RESPONSABLE"],
+        agencies: ["RESPONSABLE"]
+    };
 
-    const allowedPages = rolePages[currentUser.role] || [];
+    return Boolean(
+        currentUser &&
+        (permissions[page] || []).includes(currentUser.role)
+    );
+}
 
-    if (!allowedPages.includes(page)) {
-        showToast("Vous n'avez pas accès à cette page.", "error");
+function openPage(page) {
+    const section = $(`page-${page}`);
+
+    if (!section || !currentUser) return;
+
+    if (!canOpenPage(page)) {
+        notify("Accès non autorisé.", true);
         return;
     }
 
-    const target = document.getElementById(page);
+    currentPage = page;
 
-    if (!target) {
-        showToast("Cette page est introuvable.", "error");
-        return;
-    }
+    document.querySelectorAll(".page").forEach(item => {
+        const isActive = item.id === `page-${page}`;
 
-    document.querySelectorAll(".page").forEach(section => {
-        section.classList.remove("active");
+        item.hidden = !isActive;
+        item.classList.toggle("active", isActive);
     });
 
-    target.classList.add("active");
-
-    document.querySelectorAll(".nav-link").forEach(button => {
+    document.querySelectorAll("[data-page]").forEach(button => {
         button.classList.toggle(
             "active",
             button.dataset.page === page
         );
     });
 
-    const titles = {
-        dashboard: "Tableau de bord",
-        departures: "Départs",
-        seats: "Réservation",
-        tickets: "Billets",
-        control: "Contrôle des billets",
-        admin: "Gestion des départs",
-        adminTickets: "Gestion des billets",
-        adminUsers: "Gestion des utilisateurs"
-    };
+    setText("pageTitle", PAGE_TITLES[page] || "TransitGo");
 
-    setText("pageTitle", titles[page] || "TransitGo");
+    loadPage(page).catch(showError);
+}
 
+/* =========================================================
+   3. CHARGEMENT DES PAGES
+========================================================= */
+
+async function loadPage(page) {
     switch (page) {
         case "dashboard":
-            renderDashboard();
+            await loadDashboard();
             break;
 
         case "departures":
-            renderDepartures();
+            await loadDepartures();
             break;
 
-        case "seats":
-            renderSeatMap();
+        case "booking":
+            await loadResourcesForBooking();
+            await loadReservations();
             break;
 
         case "tickets":
-            renderTickets();
+            await loadTickets();
             break;
 
-        case "admin":
-            renderAdminDepartures();
+        case "control":
             break;
 
-        case "adminTickets":
-            renderAdminTickets();
+        case "payments":
+            await loadPayments();
             break;
 
-        case "adminUsers":
-            renderAdminUsers();
+        case "refunds":
+            await loadRefunds();
             break;
+
+        case "resources":
+            await loadResources();
+            break;
+
+        case "users":
+            await loadUsers();
+            await loadAgenciesForSelect($("newAgency"));
+            break;
+
+        case "agencies":
+            await loadAgencies();
+            break;
+
+        default:
+            console.warn("Page inconnue :", page);
     }
 }
 
-
 /* =========================================================
-   6. TABLEAU DE BORD
+   4. TABLEAU DE BORD
 ========================================================= */
 
-function renderDashboard() {
-    const departures = getDepartures();
-    const tickets = getTickets();
+async function loadDashboard() {
+    trips = [];
+    reservations = [];
+    tickets = [];
+    payments = [];
 
-    setText("statDepartures", departures.length);
+    const tasks = [];
+
+    if (hasRole("AGENT", "EXPLOITATION", "RESPONSABLE")) {
+        tasks.push(
+            API.getAll("trips/").then(data => {
+                trips = data;
+            })
+        );
+    }
+
+    if (hasRole("AGENT", "RESPONSABLE", "EXPLOITATION")) {
+        tasks.push(
+            API.getAll("reservations/").then(data => {
+                reservations = data;
+            })
+        );
+    }
+
+    if (hasRole("AGENT", "CONTROLEUR", "EXPLOITATION", "RESPONSABLE")) {
+        tasks.push(
+            API.getAll("tickets/").then(data => {
+                tickets = data;
+            })
+        );
+    }
+
+    if (hasRole("CAISSIER", "RESPONSABLE")) {
+        tasks.push(
+            API.getAll("payments/").then(data => {
+                payments = data;
+            })
+        );
+    }
+
+    const results = await Promise.allSettled(tasks);
+
+    const failedTasks = results.filter(
+        result => result.status === "rejected"
+    );
+
+    if (failedTasks.length) {
+        console.warn(
+            "Certaines données du tableau de bord n'ont pas pu être chargées.",
+            failedTasks
+        );
+    }
+
+    setText("statDepartures", trips.length);
+    setText("statReservations", reservations.length);
     setText("statTickets", tickets.length);
 
-    setText(
-        "statPaid",
-        tickets.filter(ticket => isPaid(ticket) && !isCancelled(ticket)).length
+    const total = payments.reduce(
+        (sum, payment) => sum + Number(payment.amount || 0),
+        0
     );
 
+    setText("statPaid", money(total));
+
     setText(
-        "statBoarded",
-        tickets.filter(ticket => ticket.boarded && !isCancelled(ticket)).length
+        "dashboardWelcome",
+        `Bienvenue ${currentUser.first_name || currentUser.username}. Espace : ${ROLE_LABELS[currentUser.role] || currentUser.role}.`
     );
-
-    const tbody = document.getElementById("upcomingDepartures");
-    if (!tbody) return;
-
-    const upcoming = departures
-        .filter(departure => departure.date >= todayString())
-        .sort((a, b) => {
-            return `${a.date} ${a.time}`.localeCompare(
-                `${b.date} ${b.time}`
-            );
-        })
-        .slice(0, 6);
-
-    tbody.innerHTML = "";
-
-    if (upcoming.length === 0) {
-        showElement("dashboardEmpty");
-        return;
-    }
-
-    hideElement("dashboardEmpty");
-
-    upcoming.forEach(departure => {
-        const row = document.createElement("tr");
-
-        row.innerHTML = `
-            <td>${escapeHTML(departure.from)} → ${escapeHTML(departure.to)}</td>
-            <td>${formatDate(departure.date)}</td>
-            <td>${escapeHTML(departure.time)}</td>
-            <td>${Number(departure.seats)}</td>
-        `;
-
-        tbody.appendChild(row);
-    });
 }
 
-
 /* =========================================================
-   7. RECHERCHE DES DÉPARTS
+   5. DÉPARTS
 ========================================================= */
 
-function renderDepartures(filters = {}) {
-    const container = document.getElementById("departureResults");
+async function loadDepartures() {
+    requireRole("AGENT", "EXPLOITATION", "RESPONSABLE");
+
+    trips = await API.getAll("trips/");
+    renderDepartures(trips);
+}
+
+function renderDepartures(data) {
+    const container = $("departureResults");
+    const empty = $("departureEmpty");
+
     if (!container) return;
-
-    const departures = getDepartures();
-
-    const from = (filters.from || "").toLowerCase();
-    const to = (filters.to || "").toLowerCase();
-    const date = filters.date || "";
-
-    const results = departures.filter(departure => {
-        const matchesFrom = !from ||
-            departure.from.toLowerCase().includes(from);
-
-        const matchesTo = !to ||
-            departure.to.toLowerCase().includes(to);
-
-        const matchesDate = !date || departure.date === date;
-
-        return matchesFrom &&
-            matchesTo &&
-            matchesDate &&
-            departure.seats > 0 &&
-            departure.date >= todayString();
-    });
 
     container.innerHTML = "";
 
-    if (results.length === 0) {
-        showElement("departureEmpty");
-        return;
+    if (empty) {
+        empty.textContent = data.length
+            ? ""
+            : "Aucun départ disponible.";
     }
 
-    hideElement("departureEmpty");
+    data.forEach(trip => {
+        const route = trip.route_detail || {};
+        const vehicle = trip.vehicle_detail || {};
 
-    results.forEach(departure => {
         const card = document.createElement("article");
-        card.className = "departure-card";
+        card.className = "panel departure-card";
+
+        const canBook = hasRole("AGENT") && trip.status === "PLANNED";
+
+        const canEdit = hasRole("EXPLOITATION", "RESPONSABLE")
+            && trip.status === "PLANNED";
 
         card.innerHTML = `
             <div class="departure-card-header">
-                <span class="departure-tag">Départ disponible</span>
-                <strong>${formatMoney(departure.price)}</strong>
+                <strong>${escapeHTML(money(trip.price))}</strong>
+                <span class="departure-tag">
+                    ${escapeHTML(trip.status || "Non renseigné")}
+                </span>
             </div>
 
-            <h3>${escapeHTML(departure.from)} → ${escapeHTML(departure.to)}</h3>
+            <h3>
+                ${escapeHTML(route.origin || "Départ")}
+                →
+                ${escapeHTML(route.destination || "Destination")}
+            </h3>
 
             <div class="departure-details">
-                <span>📅 ${formatDate(departure.date)}</span>
-                <span>🕒 ${escapeHTML(departure.time)}</span>
-                <span>💺 ${Number(departure.seats)} places disponibles</span>
+                <span>📅 ${escapeHTML(dateText(trip.departure_at))}</span>
+                <span>🚌 Véhicule : ${escapeHTML(vehicle.registration || "Non renseigné")}</span>
+                <span>💺 Places disponibles : ${escapeHTML(trip.available_seats ?? 0)}</span>
             </div>
 
-            <button class="btn btn-primary btn-full" data-select-departure="${escapeHTML(departure.id)}">
-                Choisir ce départ
-            </button>
+            <div class="departure-card-actions">
+                ${canBook
+                    ? `<button type="button" data-book-trip="${escapeHTML(trip.id)}">
+                           Réserver une place
+                       </button>`
+                    : ""}
+
+                ${canEdit
+                    ? `<button type="button" data-edit-trip="${escapeHTML(trip.id)}">
+                           Modifier
+                       </button>`
+                    : ""}
+            </div>
         `;
+
+        const bookButton = card.querySelector("[data-book-trip]");
+
+        if (bookButton) {
+            bookButton.addEventListener("click", () => {
+                selectTrip(trip.id);
+            });
+        }
+
+        const editButton = card.querySelector("[data-edit-trip]");
+
+        if (editButton) {
+            editButton.addEventListener("click", () => {
+                startEditTrip(trip.id);
+            });
+        }
 
         container.appendChild(card);
     });
 }
 
-function searchDepartures(event) {
-    event.preventDefault();
+if ($("departureSearchForm")) {
+    $("departureSearchForm").addEventListener("submit", event => {
+        event.preventDefault();
 
-    const from = document.getElementById("searchFrom").value.trim();
-    const to = document.getElementById("searchTo").value.trim();
-    const date = document.getElementById("searchDate").value;
+        const from = $("searchFrom").value.trim().toLowerCase();
+        const to = $("searchTo").value.trim().toLowerCase();
+        const date = $("searchDate").value;
 
-    renderDepartures({ from, to, date });
+        const filtered = trips.filter(trip => {
+            const route = trip.route_detail || {};
+
+            const origin = (route.origin || "").toLowerCase();
+            const destination = (route.destination || "").toLowerCase();
+
+            const tripDate = trip.departure_at
+                ? trip.departure_at.slice(0, 10)
+                : "";
+
+            return (!from || origin.includes(from))
+                && (!to || destination.includes(to))
+                && (!date || tripDate === date);
+        });
+
+        renderDepartures(filtered);
+    });
 }
 
-
 /* =========================================================
-   8. SÉLECTION DU DÉPART
+   6. MODIFICATION D'UN DÉPART
 ========================================================= */
 
-function selectDeparture(departureId) {
-    const departure = getDepartures().find(
-        item => item.id === departureId
+function ensureTripEditControls() {
+    const form = $("tripForm");
+
+    if (!form) {
+        throw new Error("Le formulaire des départs est introuvable.");
+    }
+
+    const submitButton = form.querySelector(
+        'button[type="submit"], input[type="submit"]'
     );
 
-    if (!departure) {
-        showToast("Départ introuvable.", "error");
-        return;
+    if (!submitButton) {
+        throw new Error("Le bouton d'enregistrement du départ est introuvable.");
     }
 
-    if (departure.seats <= 0) {
-        showToast("Il n'y a plus de places disponibles.", "error");
-        return;
+    if (!submitButton.dataset.defaultText) {
+        submitButton.dataset.defaultText =
+            submitButton.tagName === "INPUT"
+                ? submitButton.value
+                : submitButton.textContent;
     }
 
-    selectedDeparture = departure;
-    selectedSeat = null;
+    let cancelButton = $("cancelTripEditBtn");
 
-    navigate("seats");
+    if (!cancelButton) {
+        cancelButton = document.createElement("button");
+        cancelButton.type = "button";
+        cancelButton.id = "cancelTripEditBtn";
+        cancelButton.textContent = "Annuler la modification";
+        cancelButton.hidden = true;
 
-    renderSelectedDeparture();
-    renderSeatMap();
+        submitButton.insertAdjacentElement("afterend", cancelButton);
+    }
+
+    if (cancelButton.dataset.listenerReady !== "true") {
+        cancelButton.dataset.listenerReady = "true";
+
+        cancelButton.addEventListener("click", () => {
+            resetTripEditMode();
+        });
+    }
+
+    return submitButton;
 }
 
-function renderSelectedDeparture() {
-    const container = document.getElementById("selectedDepartureDetails");
-    if (!container || !selectedDeparture) return;
+function setTripSubmitText(text) {
+    const button = ensureTripEditControls();
 
-    container.innerHTML = `
-        <p><strong>Trajet :</strong> ${escapeHTML(selectedDeparture.from)} → ${escapeHTML(selectedDeparture.to)}</p>
-        <p><strong>Date :</strong> ${formatDate(selectedDeparture.date)}</p>
-        <p><strong>Heure :</strong> ${escapeHTML(selectedDeparture.time)}</p>
-        <p><strong>Prix :</strong> ${formatMoney(selectedDeparture.price)}</p>
-    `;
-
-    showElement("selectedDepartureInfo");
+    if (button.tagName === "INPUT") {
+        button.value = text;
+    } else {
+        button.textContent = text;
+    }
 }
 
+function resetTripEditMode(resetForm = true) {
+    editingTripId = null;
+
+    const form = $("tripForm");
+
+    if (resetForm && form) {
+        form.reset();
+    }
+
+    const button = form?.querySelector(
+        'button[type="submit"], input[type="submit"]'
+    );
+
+    if (button) {
+        const defaultText = button.dataset.defaultText;
+
+        if (defaultText !== undefined) {
+            if (button.tagName === "INPUT") {
+                button.value = defaultText;
+            } else {
+                button.textContent = defaultText;
+            }
+        }
+    }
+
+    const cancelButton = $("cancelTripEditBtn");
+
+    if (cancelButton) {
+        cancelButton.hidden = true;
+    }
+}
+
+async function startEditTrip(id) {
+    try {
+        requireRole("EXPLOITATION", "RESPONSABLE");
+
+        let trip = trips.find(
+            item => Number(item.id) === Number(id)
+        );
+
+        if (!trip) {
+            trip = await API.get(`trips/${id}/`);
+        }
+
+        if (!trip) {
+            throw new Error("Départ introuvable.");
+        }
+
+        if (trip.status !== "PLANNED") {
+            throw new Error(
+                "Seuls les départs planifiés peuvent être modifiés."
+            );
+        }
+
+        await loadResources();
+
+        const form = $("tripForm");
+
+        if (!form) {
+            throw new Error("Le formulaire des départs est introuvable.");
+        }
+
+        const routeId = getRelationId(trip.route);
+        const agencyId = getRelationId(trip.agency);
+        const vehicleId = getRelationId(trip.vehicle);
+        const driverId = getRelationId(trip.driver);
+
+        $("tripRoute").value = String(routeId);
+        $("tripAgency").value = String(agencyId);
+        $("tripVehicle").value = String(vehicleId);
+        $("tripDriver").value = String(driverId);
+
+        $("tripDeparture").value = dateTimeLocal(trip.departure_at);
+        $("tripArrival").value = dateTimeLocal(trip.arrival_at);
+
+        $("tripPrice").value = trip.price ?? "";
+        $("tripNotes").value = trip.notes || "";
+
+        editingTripId = trip.id;
+
+        const cancelButton = $("cancelTripEditBtn");
+        if (cancelButton) {
+            cancelButton.hidden = false;
+        }
+
+        setTripSubmitText("Enregistrer les modifications");
+
+        openPage("resources");
+
+        form.scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+        });
+
+        notify("Départ chargé. Tu peux maintenant modifier ses informations.");
+
+    } catch (error) {
+        showError(error);
+    }
+}
 
 /* =========================================================
-   9. PLAN DES PLACES
+   7. SÉLECTION D'UN DÉPART ET DES PLACES
 ========================================================= */
 
-function renderSeatMap() {
-    const container = document.getElementById("seatMap");
+async function selectTrip(id) {
+    try {
+        requireRole("AGENT");
+
+        selectedTrip = trips.find(
+            item => Number(item.id) === Number(id)
+        );
+
+        if (!selectedTrip) {
+            selectedTrip = await API.get(`trips/${id}/`);
+        }
+
+        if (!selectedTrip || selectedTrip.status !== "PLANNED") {
+            throw new Error(
+                "Ce départ n'est pas disponible pour une réservation."
+            );
+        }
+
+        setText(
+            "selectedDepartureInfo",
+            `${selectedTrip.route_detail?.origin || "Départ"} → ${selectedTrip.route_detail?.destination || "Destination"} | ${money(selectedTrip.price)}`
+        );
+
+        const bookingTripId = $("bookingTripId");
+
+        if (bookingTripId) {
+            bookingTripId.value = selectedTrip.id;
+        }
+
+        if ($("bookingTripSelect")) {
+            $("bookingTripSelect").value = String(selectedTrip.id);
+        }
+
+        const vehicleId = getRelationId(selectedTrip.vehicle);
+
+        seats = await API.getAll(
+            `seats/?vehicle=${encodeURIComponent(vehicleId)}`
+        );
+
+        reservations = await API.getAll("reservations/");
+        renderReservations();
+
+        const occupied = reservations
+            .filter(reservation =>
+                Number(getRelationId(reservation.trip)) === Number(selectedTrip.id) &&
+                ["HOLD", "CONFIRMED"].includes(reservation.status)
+            )
+            .map(reservation => Number(getRelationId(reservation.seat)));
+
+        const available = seats.filter(
+            seat => !occupied.includes(Number(seat.id))
+        );
+
+        const select = $("bookingSeat");
+
+        if (!select) {
+            throw new Error("Le champ de sélection des places est introuvable.");
+        }
+
+        select.innerHTML = '<option value="">Choisir une place</option>';
+
+        available.forEach(seat => {
+            const option = document.createElement("option");
+            option.value = seat.id;
+            option.textContent = `Place ${seat.number}`;
+            select.appendChild(option);
+        });
+
+        if ($("paymentPanel")) {
+            $("paymentPanel").hidden = true;
+        }
+
+        if ($("paymentResult")) {
+            $("paymentResult").innerHTML = "";
+        }
+
+        if (!available.length) {
+            notify("Aucune place disponible pour ce départ.", true);
+        }
+
+        openPage("booking");
+
+    } catch (error) {
+        showError(error);
+    }
+}
+
+/* =========================================================
+   8. RÉSERVATIONS : CHARGEMENT ET AFFICHAGE
+========================================================= */
+
+function reservationStatusLabel(status) {
+    const labels = {
+        HOLD: "En attente",
+        CONFIRMED: "Confirmée",
+        CANCELLED: "Annulée",
+        EXPIRED: "Expirée"
+    };
+
+    return labels[status] || status || "Non renseigné";
+}
+
+async function loadReservations() {
+    requireRole("AGENT", "EXPLOITATION", "RESPONSABLE");
+
+    reservations = await API.getAll("reservations/");
+
+    renderReservations();
+}
+
+function renderReservations() {
+    const tbody = $("reservationRows");
+    const empty = $("reservationEmpty");
+
+    if (!tbody) return;
+
+    tbody.innerHTML = "";
+
+    if (!reservations.length) {
+        if (empty) {
+            empty.textContent = "Aucune réservation enregistrée pour le moment.";
+        }
+
+        return;
+    }
+
+    if (empty) {
+        empty.textContent = "";
+    }
+
+    reservations.forEach(reservation => {
+        const trip = reservation.trip_detail || {};
+        const route = trip.route_detail || {};
+        const seat = reservation.seat_detail || {};
+
+        const row = document.createElement("tr");
+
+        row.innerHTML = `
+            <td>#${escapeHTML(reservation.id)}</td>
+
+            <td>
+                ${escapeHTML(reservation.passenger_name || "Non renseigné")}
+            </td>
+
+            <td>
+                ${escapeHTML(reservation.passenger_phone || "Non renseigné")}
+            </td>
+
+            <td>
+                ${escapeHTML(route.origin || "Départ")}
+                →
+                ${escapeHTML(route.destination || "Destination")}
+            </td>
+
+            <td>
+                ${escapeHTML(dateText(trip.departure_at))}
+            </td>
+
+            <td>
+                ${escapeHTML(seat.number ?? "Non renseignée")}
+            </td>
+
+            <td>
+                ${escapeHTML(money(reservation.amount))}
+            </td>
+
+            <td>
+                <span class="status-badge">
+                    ${escapeHTML(reservationStatusLabel(reservation.status))}
+                </span>
+            </td>
+        `;
+
+        tbody.appendChild(row);
+    });
+}
+
+/* =========================================================
+   9. RÉSERVATION : CHARGEMENT DES DÉPARTS
+========================================================= */
+
+async function loadResourcesForBooking() {
+    requireRole("AGENT");
+
+    trips = await API.getAll("trips/");
+
+    const select = $("bookingTripSelect");
+
+    if (!select) {
+        throw new Error(
+            "Le champ de sélection du départ est introuvable dans index.html."
+        );
+    }
+
+    const availableTrips = trips.filter(
+        trip => trip.status === "PLANNED"
+    );
+
+    select.innerHTML = '<option value="">Choisir un départ</option>';
+
+    availableTrips.forEach(trip => {
+        const route = trip.route_detail || {};
+        const option = document.createElement("option");
+
+        option.value = trip.id;
+        option.textContent =
+            `${route.origin || "Départ"} → ${route.destination || "Destination"} | ${dateText(trip.departure_at)} | ${money(trip.price)}`;
+
+        select.appendChild(option);
+    });
+
+    if (selectedTrip) {
+        select.value = String(selectedTrip.id);
+    }
+
+    if (!availableTrips.length) {
+        select.innerHTML = '<option value="">Aucun départ planifié</option>';
+        notify("Aucun départ planifié disponible pour le moment.", true);
+    }
+}
+
+/* =========================================================
+   10. ACTUALISATION DES RÉSERVATIONS
+========================================================= */
+
+if ($("refreshReservationsBtn")) {
+    $("refreshReservationsBtn").addEventListener("click", async () => {
+        const button = $("refreshReservationsBtn");
+
+        setButtonLoading(button, true, "Actualisation...");
+
+        try {
+            await loadReservations();
+            notify("Liste des réservations actualisée.");
+
+        } catch (error) {
+            showError(error);
+
+        } finally {
+            setButtonLoading(button, false);
+        }
+    });
+}
+
+/* =========================================================
+   11. CHANGEMENT DU DÉPART À RÉSERVER
+========================================================= */
+
+if ($("bookingTripSelect")) {
+    $("bookingTripSelect").addEventListener("change", async event => {
+        const tripId = event.target.value;
+
+        if (!tripId) {
+            selectedTrip = null;
+
+            if ($("bookingTripId")) {
+                $("bookingTripId").value = "";
+            }
+
+            if ($("bookingSeat")) {
+                $("bookingSeat").innerHTML =
+                    '<option value="">Choisir une place</option>';
+            }
+
+            setText(
+                "selectedDepartureInfo",
+                "Sélectionne un départ dans la liste."
+            );
+
+            return;
+        }
+
+        await selectTrip(tripId);
+    });
+}
+
+/* =========================================================
+   12. CRÉATION D'UNE RÉSERVATION
+========================================================= */
+
+if ($("bookingForm")) {
+    $("bookingForm").addEventListener("submit", async event => {
+        event.preventDefault();
+
+        const button = event.submitter;
+        setButtonLoading(button, true, "Réservation...");
+
+        try {
+            requireRole("AGENT");
+
+            if (!selectedTrip || !$("bookingTripId")?.value) {
+                throw new Error("Choisis d'abord un départ.");
+            }
+
+            if (!$("bookingSeat")?.value) {
+                throw new Error("Choisis une place avant de continuer.");
+            }
+
+            const reservation = await API.post("reservations/", {
+                trip: Number($("bookingTripId").value),
+                seat: Number($("bookingSeat").value),
+                passenger_name: $("passengerName").value.trim(),
+                passenger_phone: $("passengerPhone").value.trim(),
+                passenger_document: $("passengerDocument").value.trim()
+            });
+
+            $("paymentReservationId").value = reservation.id;
+            $("paymentAmount").value = reservation.amount;
+
+            setText(
+                "paymentReservationInfo",
+                `Réservation #${reservation.id} — Montant total : ${money(reservation.amount)}`
+            );
+
+            $("paymentPanel").hidden = false;
+
+            notify("Réservation créée. Effectue maintenant le paiement.");
+
+            await loadReservations();
+            await loadDepartures();
+
+        } catch (error) {
+            showError(error);
+
+        } finally {
+            setButtonLoading(button, false);
+        }
+    });
+}
+
+/* =========================================================
+   13. PAIEMENT DEPUIS LA RÉSERVATION
+========================================================= */
+
+if ($("paymentForm")) {
+    $("paymentForm").addEventListener("submit", async event => {
+        event.preventDefault();
+
+        const button = event.submitter;
+        setButtonLoading(button, true, "Paiement...");
+
+        try {
+            requireRole("AGENT");
+
+            const id = $("paymentReservationId").value;
+            const amount = Number($("paymentAmount").value);
+            const method = $("paymentMethod").value;
+
+            if (!id) {
+                throw new Error("Aucune réservation à payer.");
+            }
+
+            if (!Number.isInteger(amount) || amount <= 0) {
+                throw new Error("Saisis un montant valide en FCFA.");
+            }
+
+            const result = await API.post(
+                `reservations/${id}/pay/`,
+                { amount, method }
+            );
+
+            const resultElement = $("paymentResult");
+
+            if (resultElement) {
+                if (result.ticket) {
+                    resultElement.innerHTML = `
+                        <h3>Paiement confirmé</h3>
+                        <p>Ton billet a été généré.</p>
+                        <p>
+                            <strong>Code :</strong>
+                            ${escapeHTML(result.ticket.code)}
+                        </p>
+                        <p>Conserve ce code pour le contrôle à l'embarquement.</p>
+                    `;
+
+                    notify("Paiement confirmé et billet généré.");
+
+                } else {
+                    resultElement.textContent =
+                        "Paiement enregistré. Le montant restant doit être réglé avant la génération du billet.";
+
+                    notify("Paiement partiel enregistré.");
+                }
+            }
+
+            await loadReservations();
+            await loadTickets();
+            await loadDashboard();
+
+        } catch (error) {
+            showError(error);
+
+        } finally {
+            setButtonLoading(button, false);
+        }
+    });
+}
+
+/* =========================================================
+   14. BILLETS
+========================================================= */
+
+async function loadTickets() {
+    requireRole("AGENT", "CONTROLEUR", "EXPLOITATION", "RESPONSABLE");
+
+    tickets = await API.getAll("tickets/");
+    renderTickets();
+}
+
+function renderTickets() {
+    const tbody = $("ticketRows");
+    const empty = $("ticketEmpty");
+
+    if (!tbody) return;
+
+    tbody.innerHTML = "";
+
+    if (empty) {
+        empty.textContent = tickets.length
+            ? ""
+            : "Aucun billet enregistré.";
+    }
+
+    tickets.forEach(ticket => {
+        const row = document.createElement("tr");
+
+        row.innerHTML = `
+            <td>${escapeHTML(ticket.code)}</td>
+            <td>${escapeHTML(ticket.reservation)}</td>
+            <td>${escapeHTML(dateText(ticket.issued_at))}</td>
+            <td>
+                <span class="status-badge ${ticket.checked ? "status-boarded" : "status-pending"}">
+                    ${ticket.checked ? "Contrôlé" : "Non contrôlé"}
+                </span>
+            </td>
+        `;
+
+        tbody.appendChild(row);
+    });
+}
+
+if ($("refreshTicketsBtn")) {
+    $("refreshTicketsBtn").addEventListener("click", () => {
+        loadTickets().catch(showError);
+    });
+}
+
+/* =========================================================
+   15. CONTRÔLE DES BILLETS
+========================================================= */
+
+if ($("controlForm")) {
+    $("controlForm").addEventListener("submit", async event => {
+        event.preventDefault();
+
+        const button = event.submitter;
+        setButtonLoading(button, true, "Vérification...");
+
+        const resultElement = $("controlResult");
+
+        try {
+            requireRole("CONTROLEUR", "RESPONSABLE");
+
+            const code = $("controlReference").value.trim();
+
+            if (!code) {
+                throw new Error("Saisis le code du billet.");
+            }
+
+            const result = await API.post("tickets/check/", { code });
+
+            if (resultElement) {
+                resultElement.className = "control-result success";
+                resultElement.innerHTML = `
+                    <h3>Billet validé</h3>
+                    <p>
+                        Embarquement enregistré pour le billet
+                        <strong>${escapeHTML(result.code || code)}</strong>.
+                    </p>
+                `;
+            }
+
+            notify("Billet contrôlé avec succès.");
+            $("controlReference").value = "";
+
+        } catch (error) {
+            if (resultElement) {
+                resultElement.className = "control-result error";
+                resultElement.textContent = error.message;
+            }
+
+            showError(error);
+
+        } finally {
+            setButtonLoading(button, false);
+        }
+    });
+}
+
+/* =========================================================
+   16. PAIEMENTS - ESPACE CAISSIER / RESPONSABLE
+========================================================= */
+
+async function loadPayments() {
+    requireRole("CAISSIER", "RESPONSABLE");
+
+    payments = await API.getAll("payments/");
+
+    const tbody = $("paymentRows");
+    const empty = $("paymentEmpty");
+
+    if (!tbody) return;
+
+    tbody.innerHTML = "";
+
+    if (empty) {
+        empty.textContent = payments.length
+            ? ""
+            : "Aucun paiement enregistré.";
+    }
+
+    payments.forEach(payment => {
+        tbody.insertAdjacentHTML("beforeend", `
+            <tr>
+                <td>${escapeHTML(payment.reference)}</td>
+                <td>${escapeHTML(payment.reservation)}</td>
+                <td>${escapeHTML(money(payment.amount))}</td>
+                <td>${escapeHTML(payment.method)}</td>
+                <td>${escapeHTML(dateText(payment.paid_at))}</td>
+            </tr>
+        `);
+    });
+}
+
+if ($("refreshPaymentsBtn")) {
+    $("refreshPaymentsBtn").addEventListener("click", () => {
+        loadPayments().catch(showError);
+    });
+}
+
+/* =========================================================
+   17. REMBOURSEMENTS
+========================================================= */
+
+async function loadRefunds() {
+    requireRole("CAISSIER", "RESPONSABLE");
+
+    refunds = await API.getAll("refunds/");
+    renderRefunds();
+}
+
+function renderRefunds() {
+    const tbody = $("refundRows");
+    const empty = $("refundEmpty");
+
+    if (!tbody) return;
+
+    tbody.innerHTML = "";
+
+    if (empty) {
+        empty.textContent = refunds.length
+            ? ""
+            : "Aucune demande.";
+    }
+
+    refunds.forEach(refund => {
+        const actions = hasRole("RESPONSABLE") &&
+            refund.status === "PENDING"
+            ? `
+                <button type="button" data-approve="${escapeHTML(refund.id)}">
+                    Approuver
+                </button>
+                <button type="button" data-reject="${escapeHTML(refund.id)}">
+                    Refuser
+                </button>
+            `
+            : "";
+
+        tbody.insertAdjacentHTML("beforeend", `
+            <tr>
+                <td>${escapeHTML(refund.id)}</td>
+                <td>${escapeHTML(refund.reservation)}</td>
+                <td>${escapeHTML(money(refund.amount))}</td>
+                <td>${escapeHTML(refund.reason)}</td>
+                <td>${escapeHTML(refund.status)}</td>
+                <td>${actions}</td>
+            </tr>
+        `);
+    });
+
+    tbody.querySelectorAll("[data-approve]").forEach(button => {
+        button.addEventListener("click", () => {
+            reviewRefund(button.dataset.approve, "approve");
+        });
+    });
+
+    tbody.querySelectorAll("[data-reject]").forEach(button => {
+        button.addEventListener("click", () => {
+            reviewRefund(button.dataset.reject, "reject");
+        });
+    });
+}
+
+if ($("refundForm")) {
+    $("refundForm").addEventListener("submit", async event => {
+        event.preventDefault();
+
+        try {
+            requireRole("CAISSIER", "RESPONSABLE");
+
+            const amount = Number($("refundAmount").value);
+
+            if (!Number.isInteger(amount) || amount <= 0) {
+                throw new Error("Saisis un montant de remboursement valide.");
+            }
+
+            await API.post("refunds/", {
+                reservation: Number($("refundReservation").value),
+                amount,
+                reason: $("refundReason").value.trim()
+            });
+
+            event.target.reset();
+
+            notify("Demande de remboursement envoyée.");
+            await loadRefunds();
+
+        } catch (error) {
+            showError(error);
+        }
+    });
+}
+
+async function reviewRefund(id, action) {
+    try {
+        requireRole("RESPONSABLE");
+
+        const actionLabel = action === "approve"
+            ? "approuver"
+            : "refuser";
+
+        if (!confirm(`Confirmer : ${actionLabel} ce remboursement ?`)) {
+            return;
+        }
+
+        await API.post(`refunds/${id}/${action}/`, {});
+
+        notify("Demande traitée.");
+        await loadRefunds();
+
+    } catch (error) {
+        showError(error);
+    }
+}
+
+/* =========================================================
+   18. RESSOURCES
+========================================================= */
+
+async function loadResources() {
+    requireRole("EXPLOITATION", "RESPONSABLE");
+
+    const requests = [
+        API.getAll("routes/"),
+        API.getAll("vehicles/"),
+        API.getAll("drivers/")
+    ];
+
+    if (hasRole("RESPONSABLE")) {
+        requests.push(API.getAll("agencies/"));
+    }
+
+    const results = await Promise.all(requests);
+
+    routes = results[0];
+    vehicles = results[1];
+    drivers = results[2];
+
+    if (hasRole("RESPONSABLE")) {
+        agencies = results[3];
+    } else if (currentUser.agency_id) {
+        agencies = [{
+            id: currentUser.agency_id,
+            name: "Mon agence",
+            city: ""
+        }];
+    } else {
+        agencies = [];
+    }
+
+    fillSelect(
+        $("tripRoute"),
+        routes,
+        item => `${item.origin} → ${item.destination}`
+    );
+
+    fillSelect(
+        $("tripAgency"),
+        agencies,
+        item => item.city
+            ? `${item.name} (${item.city})`
+            : item.name
+    );
+
+    fillSelect(
+        $("tripVehicle"),
+        vehicles,
+        item => `${item.registration} — ${item.capacity} places`
+    );
+
+    fillSelect(
+        $("tripDriver"),
+        drivers,
+        item => `${item.first_name} ${item.last_name}`
+    );
+}
+
+function fillSelect(select, items, labelFunction) {
+    if (!select) return;
+
+    select.innerHTML = '<option value="">Choisir</option>';
+
+    items.forEach(item => {
+        const option = document.createElement("option");
+        option.value = item.id;
+        option.textContent = labelFunction(item);
+        select.appendChild(option);
+    });
+}
+
+/* =========================================================
+   19. CRÉATION D'UN ITINÉRAIRE
+========================================================= */
+
+if ($("routeForm")) {
+    $("routeForm").addEventListener("submit", async event => {
+        event.preventDefault();
+
+        try {
+            requireRole("EXPLOITATION", "RESPONSABLE");
+
+            await API.post("routes/", {
+                origin: $("routeOrigin").value.trim(),
+                destination: $("routeDestination").value.trim(),
+                distance_km: Number($("routeDistance").value || 0),
+                estimated_minutes: Number($("routeDuration").value || 0)
+            });
+
+            event.target.reset();
+
+            notify("Itinéraire créé.");
+            await loadResources();
+
+        } catch (error) {
+            showError(error);
+        }
+    });
+}
+
+/* =========================================================
+   20. AJOUT D'UN CHAUFFEUR
+========================================================= */
+
+if ($("driverForm")) {
+    $("driverForm").addEventListener("submit", async event => {
+        event.preventDefault();
+
+        try {
+            requireRole("EXPLOITATION", "RESPONSABLE");
+
+            await API.post("drivers/", {
+                first_name: $("driverFirstName").value.trim(),
+                last_name: $("driverLastName").value.trim(),
+                phone: $("driverPhone").value.trim(),
+                license_number: $("driverLicense").value.trim(),
+                active: true
+            });
+
+            event.target.reset();
+
+            notify("Chauffeur ajouté.");
+            await loadResources();
+
+        } catch (error) {
+            showError(error);
+        }
+    });
+}
+
+/* =========================================================
+   21. AJOUT D'UN VÉHICULE
+========================================================= */
+
+if ($("vehicleForm")) {
+    $("vehicleForm").addEventListener("submit", async event => {
+        event.preventDefault();
+
+        try {
+            requireRole("EXPLOITATION", "RESPONSABLE");
+
+            await API.post("vehicles/", {
+                registration: $("vehicleRegistration").value.trim(),
+                brand: $("vehicleBrand").value.trim(),
+                model: $("vehicleModel").value.trim(),
+                capacity: Number($("vehicleCapacity").value),
+                available: true
+            });
+
+            event.target.reset();
+
+            notify("Véhicule ajouté.");
+            await loadResources();
+
+        } catch (error) {
+            showError(error);
+        }
+    });
+}
+
+/* =========================================================
+   22. PROGRAMMATION ET MODIFICATION D'UN DÉPART
+========================================================= */
+
+if ($("tripForm")) {
+    $("tripForm").addEventListener("submit", async event => {
+        event.preventDefault();
+
+        const submitButton = event.submitter;
+
+        setButtonLoading(
+            submitButton,
+            true,
+            editingTripId ? "Modification..." : "Création..."
+        );
+
+        try {
+            requireRole("EXPLOITATION", "RESPONSABLE");
+
+            const departureValue = $("tripDeparture").value;
+            const arrivalValue = $("tripArrival").value;
+            const price = Number($("tripPrice").value);
+
+            if (!$("tripRoute").value) {
+                throw new Error("Choisis un itinéraire.");
+            }
+
+            if (!$("tripAgency").value) {
+                throw new Error(
+                    "Aucune agence disponible. Vérifie l'agence associée à ton compte."
+                );
+            }
+
+            if (!$("tripVehicle").value) {
+                throw new Error("Choisis un véhicule.");
+            }
+
+            if (!$("tripDriver").value) {
+                throw new Error("Choisis un chauffeur.");
+            }
+
+            if (!departureValue) {
+                throw new Error("Indique la date et l'heure du départ.");
+            }
+
+            if (!Number.isFinite(price) || price <= 0) {
+                throw new Error("Le prix doit être supérieur à zéro.");
+            }
+
+            const departureDate = new Date(departureValue);
+
+            if (Number.isNaN(departureDate.getTime())) {
+                throw new Error("La date de départ n'est pas valide.");
+            }
+
+            let arrivalDate = null;
+
+            if (arrivalValue) {
+                arrivalDate = new Date(arrivalValue);
+
+                if (Number.isNaN(arrivalDate.getTime())) {
+                    throw new Error("La date d'arrivée n'est pas valide.");
+                }
+
+                if (arrivalDate <= departureDate) {
+                    throw new Error(
+                        "L'arrivée doit être prévue après le départ."
+                    );
+                }
+            }
+
+            const body = {
+                route: Number($("tripRoute").value),
+                agency: Number($("tripAgency").value),
+                vehicle: Number($("tripVehicle").value),
+                driver: Number($("tripDriver").value),
+                departure_at: departureDate.toISOString(),
+                arrival_at: arrivalDate
+                    ? arrivalDate.toISOString()
+                    : null,
+                price,
+                notes: $("tripNotes").value.trim()
+            };
+
+            if (editingTripId) {
+                await API.patch(
+                    `trips/${editingTripId}/`,
+                    body
+                );
+
+                notify("Départ modifié avec succès.");
+
+                resetTripEditMode();
+
+            } else {
+                body.status = "PLANNED";
+
+                await API.post("trips/", body);
+
+                event.target.reset();
+
+                notify("Départ programmé.");
+            }
+
+            trips = await API.getAll("trips/");
+
+            renderDepartures(trips);
+
+        } catch (error) {
+            showError(error);
+
+        } finally {
+            setButtonLoading(submitButton, false);
+        }
+    });
+}
+
+/* =========================================================
+   23. UTILISATEURS
+========================================================= */
+
+async function loadUsers() {
+    requireRole("RESPONSABLE");
+
+    users = await API.getAll("users/");
+
+    const tbody = $("userRows");
+    if (!tbody) return;
+
+    tbody.innerHTML = "";
+
+    users.forEach(user => {
+        const fullName =
+            `${user.first_name || ""} ${user.last_name || ""}`.trim();
+
+        tbody.insertAdjacentHTML("beforeend", `
+            <tr>
+                <td>${escapeHTML(user.username)}</td>
+                <td>${escapeHTML(fullName || "Non renseigné")}</td>
+                <td>${escapeHTML(ROLE_LABELS[user.role] || user.role || "")}</td>
+                <td>
+                    <span class="status-badge ${user.is_active ? "status-paid" : "status-cancelled"}">
+                        ${user.is_active ? "Actif" : "Désactivé"}
+                    </span>
+                </td>
+                <td>
+                    <button
+                        type="button"
+                        data-toggle-user="${escapeHTML(user.id)}"
+                        data-active="${user.is_active}">
+                        ${user.is_active ? "Désactiver" : "Activer"}
+                    </button>
+                </td>
+            </tr>
+        `);
+    });
+
+    tbody.querySelectorAll("[data-toggle-user]").forEach(button => {
+        button.addEventListener("click", async () => {
+            try {
+                requireRole("RESPONSABLE");
+
+                const active = button.dataset.active === "true";
+
+                await API.patch(
+                    `users/${button.dataset.toggleUser}/`,
+                    { is_active: !active }
+                );
+
+                notify("Utilisateur mis à jour.");
+                await loadUsers();
+
+            } catch (error) {
+                showError(error);
+            }
+        });
+    });
+}
+
+if ($("userForm")) {
+    $("userForm").addEventListener("submit", async event => {
+        event.preventDefault();
+
+        try {
+            requireRole("RESPONSABLE");
+
+            const body = {
+                username: $("newUsername").value.trim(),
+                first_name: $("newFirstName").value.trim(),
+                last_name: $("newLastName").value.trim(),
+                email: $("newEmail").value.trim(),
+                password: $("newPassword").value,
+                role: $("newRole").value,
+                is_active: true
+            };
+
+            if ($("newAgency").value) {
+                body.agency_id = Number($("newAgency").value);
+            }
+
+            await API.post("users/", body);
+
+            event.target.reset();
+
+            notify("Utilisateur créé.");
+            await loadUsers();
+
+        } catch (error) {
+            showError(error);
+        }
+    });
+}
+
+async function loadAgenciesForSelect(select) {
+    if (!select) return;
+
+    requireRole("RESPONSABLE");
+
+    agencies = await API.getAll("agencies/");
+
+    fillSelect(
+        select,
+        agencies,
+        item => `${item.name} (${item.city})`
+    );
+}
+
+/* =========================================================
+   24. AGENCES
+========================================================= */
+
+async function loadAgencies() {
+    requireRole("RESPONSABLE");
+
+    agencies = await API.getAll("agencies/");
+
+    const container = $("agencyRows");
     if (!container) return;
 
     container.innerHTML = "";
 
-    if (!selectedDeparture) {
+    if (!agencies.length) {
         container.innerHTML = `
             <div class="empty-state">
-                Veuillez d'abord choisir un départ.
+                Aucune agence enregistrée.
             </div>
         `;
-
-        setText("selectedSeatText", "Aucune place sélectionnée.");
         return;
     }
 
-    const departure = getDepartures().find(
-        item => item.id === selectedDeparture.id
+    agencies.forEach(agency => {
+        container.insertAdjacentHTML("beforeend", `
+            <div class="panel">
+                <h3>${escapeHTML(agency.name)}</h3>
+                <p>${escapeHTML(agency.city)}</p>
+                <p>${escapeHTML(agency.address || "Adresse non renseignée")}</p>
+                <p>${escapeHTML(agency.phone || "Téléphone non renseigné")}</p>
+            </div>
+        `);
+    });
+}
+
+if ($("agencyForm")) {
+    $("agencyForm").addEventListener("submit", async event => {
+        event.preventDefault();
+
+        try {
+            requireRole("RESPONSABLE");
+
+            await API.post("agencies/", {
+                name: $("agencyName").value.trim(),
+                city: $("agencyCity").value.trim(),
+                address: $("agencyAddress").value.trim(),
+                phone: $("agencyPhone").value.trim()
+            });
+
+            event.target.reset();
+
+            notify("Agence créée.");
+            await loadAgencies();
+
+        } catch (error) {
+            showError(error);
+        }
+    });
+}
+
+/* =========================================================
+   25. CONNEXION
+========================================================= */
+
+async function startApplication(user) {
+    currentUser = user;
+
+    $("loginSection").hidden = true;
+    $("appSection").hidden = false;
+
+    const fullName =
+        `${user.first_name || ""} ${user.last_name || ""}`.trim();
+
+    setText("userName", fullName || user.username);
+
+    setText(
+        "userRole",
+        ROLE_LABELS[user.role] || user.role || "Utilisateur"
     );
 
-    if (!departure) {
-        container.textContent = "Ce départ n'existe plus.";
-        return;
-    }
+    configureNavigation();
+    openPage("dashboard");
+}
 
-    const tickets = getTickets();
+if ($("loginForm")) {
+    $("loginForm").addEventListener("submit", async event => {
+        event.preventDefault();
 
-    const occupiedSeats = tickets
-        .filter(ticket =>
-            ticket.departureId === departure.id &&
-            !isCancelled(ticket)
-        )
-        .map(ticket => Number(ticket.seat));
+        const button = event.submitter;
+        const errorElement = $("loginError");
 
-    const totalSeats = Number(departure.totalSeats || departure.seats);
+        if (errorElement) {
+            errorElement.textContent = "";
+        }
 
-    for (let seatNumber = 1; seatNumber <= totalSeats; seatNumber++) {
-        const button = document.createElement("button");
+        setButtonLoading(button, true, "Connexion...");
 
-        button.type = "button";
-        button.className = "seat";
+        try {
+            const user = await API.login(
+                $("username").value.trim(),
+                $("password").value
+            );
 
-        const occupied = occupiedSeats.includes(seatNumber);
+            await startApplication(user);
 
-        if (occupied) {
-            button.classList.add("occupied");
-            button.disabled = true;
-            button.title = "Place déjà réservée";
-        } else {
-            button.classList.add("available");
-            button.title = `Place ${seatNumber}`;
-
-            if (selectedSeat === seatNumber) {
-                button.classList.add("selected");
+        } catch (error) {
+            if (errorElement) {
+                errorElement.textContent = error.message;
+            } else {
+                showError(error);
             }
 
-            button.addEventListener("click", () => {
-                selectedSeat = seatNumber;
-                renderSeatMap();
-            });
-        }
-
-        button.textContent = seatNumber;
-
-        container.appendChild(button);
-    }
-
-    setText(
-        "selectedSeatText",
-        selectedSeat
-            ? `Place sélectionnée : ${selectedSeat}`
-            : "Aucune place sélectionnée."
-    );
-}
-
-
-/* =========================================================
-   10. RÉSERVATION ET PAIEMENT SIMULÉ
-========================================================= */
-
-function confirmBooking(event) {
-    event.preventDefault();
-
-    if (!selectedDeparture) {
-        showToast("Veuillez sélectionner un départ.", "error");
-        return;
-    }
-
-    if (!selectedSeat) {
-        showToast("Veuillez sélectionner une place.", "error");
-        return;
-    }
-
-    const passengerName = document
-        .getElementById("passengerName")
-        .value.trim();
-
-    const passengerPhone = document
-        .getElementById("passengerPhone")
-        .value.trim();
-
-    const paymentMethod = document
-        .getElementById("paymentMethod")
-        .value;
-
-    if (!passengerName || !passengerPhone || !paymentMethod) {
-        showToast("Veuillez remplir toutes les informations.", "error");
-        return;
-    }
-
-    const departures = getDepartures();
-
-    const departure = departures.find(
-        item => item.id === selectedDeparture.id
-    );
-
-    if (!departure) {
-        showToast("Ce départ n'existe plus.", "error");
-        return;
-    }
-
-    if (departure.date < todayString()) {
-        showToast("La date de ce départ est dépassée.", "error");
-        return;
-    }
-
-    const tickets = getTickets();
-
-    const alreadyReserved = tickets.some(ticket =>
-        ticket.departureId === departure.id &&
-        Number(ticket.seat) === Number(selectedSeat) &&
-        !isCancelled(ticket)
-    );
-
-    if (alreadyReserved) {
-        showToast("Cette place vient d'être réservée.", "error");
-        renderSeatMap();
-        return;
-    }
-
-    if (departure.seats <= 0) {
-        showToast("Il n'y a plus de places disponibles.", "error");
-        return;
-    }
-
-    const confirmation = window.confirm(
-        `Confirmer le paiement simulé de ${formatMoney(departure.price)} ?\n\n` +
-        `Voyageur : ${passengerName}\n` +
-        `Trajet : ${departure.from} - ${departure.to}\n` +
-        `Place : ${selectedSeat}\n` +
-        `Mode : ${paymentMethod}\n\n` +
-        `Aucun argent réel ne sera débité.`
-    );
-
-    if (!confirmation) {
-        showToast("Paiement non confirmé. Aucun billet généré.", "warning");
-        return;
-    }
-
-    // Le billet est créé seulement après confirmation
-    // du paiement simulé.
-    const reference = generateTicketReference();
-
-    const ticket = {
-        id: "TKT-" + Date.now(),
-        reference,
-        departureId: departure.id,
-        passengerName,
-        passengerPhone,
-        from: departure.from,
-        to: departure.to,
-        date: departure.date,
-        time: departure.time,
-        seat: selectedSeat,
-        price: departure.price,
-        paymentMethod,
-        paymentStatus: "Payé (simulation)",
-        status: "Payé",
-        boarded: false,
-        cancelled: false,
-        createdAt: new Date().toISOString()
-    };
-
-    tickets.push(ticket);
-    saveTickets(tickets);
-
-    departure.seats = Math.max(0, Number(departure.seats) - 1);
-    saveDepartures(departures);
-
-    document.getElementById("bookingForm").reset();
-
-    selectedDeparture = null;
-    selectedSeat = null;
-
-    renderDashboard();
-    renderDepartures();
-
-    showToast(`Paiement confirmé ! Billet ${reference} généré.`);
-
-    navigate("tickets");
-}
-
-function generateTicketReference() {
-    const tickets = getTickets();
-
-    let reference;
-
-    do {
-        reference = "TG-" + Math.floor(1000 + Math.random() * 9000);
-    } while (tickets.some(ticket => ticket.reference === reference));
-
-    return reference;
-}
-
-
-/* =========================================================
-   11. AFFICHAGE DES BILLETS
-========================================================= */
-
-function renderTickets(search = "") {
-    const tbody = document.getElementById("ticketRows");
-    if (!tbody) return;
-
-    const query = search.toLowerCase();
-
-    const tickets = getTickets().filter(ticket => {
-        if (currentUser.role === "Agent") {
-            // En démonstration, l'agent voit les billets disponibles.
-            return true;
-        }
-
-        return true;
-    }).filter(ticket => {
-        const searchable = [
-            ticket.reference,
-            ticket.passengerName,
-            ticket.from,
-            ticket.to
-        ].join(" ").toLowerCase();
-
-        return searchable.includes(query);
-    });
-
-    tbody.innerHTML = "";
-
-    if (tickets.length === 0) {
-        showElement("ticketEmpty");
-        return;
-    }
-
-    hideElement("ticketEmpty");
-
-    tickets.forEach(ticket => {
-        const row = document.createElement("tr");
-        const status = getTicketStatus(ticket);
-
-        row.innerHTML = `
-            <td><strong>${escapeHTML(ticket.reference)}</strong></td>
-            <td>${escapeHTML(ticket.passengerName)}</td>
-            <td>${escapeHTML(ticket.from)} → ${escapeHTML(ticket.to)}</td>
-            <td>${escapeHTML(ticket.seat)}</td>
-            <td>${escapeHTML(ticket.paymentStatus || "En attente")}</td>
-            <td>${statusBadge(status)}</td>
-        `;
-
-        tbody.appendChild(row);
-    });
-}
-
-
-/* =========================================================
-   12. EXPORTATION CSV
-========================================================= */
-
-function exportTicketsCSV() {
-    const tickets = getTickets();
-
-    if (tickets.length === 0) {
-        showToast("Aucun billet à exporter.", "warning");
-        return;
-    }
-
-    const headers = [
-        "Référence",
-        "Voyageur",
-        "Téléphone",
-        "Départ",
-        "Arrivée",
-        "Date",
-        "Heure",
-        "Place",
-        "Prix",
-        "Paiement",
-        "Statut"
-    ];
-
-    const rows = tickets.map(ticket => [
-        ticket.reference,
-        ticket.passengerName,
-        ticket.passengerPhone,
-        ticket.from,
-        ticket.to,
-        ticket.date,
-        ticket.time,
-        ticket.seat,
-        ticket.price,
-        ticket.paymentMethod,
-        getTicketStatus(ticket)
-    ]);
-
-    const csvContent = [headers, ...rows]
-        .map(row => row.map(value => {
-            const safeValue = String(value ?? "").replace(/"/g, '""');
-            return `"${safeValue}"`;
-        }).join(";"))
-        .join("\n");
-
-    const blob = new Blob(
-        ["\uFEFF" + csvContent],
-        { type: "text/csv;charset=utf-8;" }
-    );
-
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-
-    link.href = url;
-    link.download = "transitgo-billets.csv";
-
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-
-    URL.revokeObjectURL(url);
-
-    showToast("Exportation terminée.");
-}
-
-
-/* =========================================================
-   13. CONTRÔLE DES BILLETS
-========================================================= */
-
-function controlTicket(event) {
-    event.preventDefault();
-
-    const reference = document
-        .getElementById("controlReference")
-        .value.trim()
-        .toUpperCase();
-
-    const result = document.getElementById("controlResult");
-
-    if (!reference || !result) return;
-
-    result.classList.remove("hidden", "success", "error", "warning");
-
-    const tickets = getTickets();
-
-    const ticket = tickets.find(
-        item => item.reference.toUpperCase() === reference
-    );
-
-    if (!ticket) {
-        displayControlResult(
-            "error",
-            "Billet introuvable",
-            "Cette référence ne correspond à aucun billet enregistré."
-        );
-        return;
-    }
-
-    if (isCancelled(ticket)) {
-        displayControlResult(
-            "error",
-            "Billet annulé",
-            "Ce billet a été annulé. L'embarquement est interdit."
-        );
-        return;
-    }
-
-    if (!isPaid(ticket)) {
-        displayControlResult(
-            "error",
-            "Paiement non confirmé",
-            "Ce billet ne possède pas de paiement confirmé."
-        );
-        return;
-    }
-
-    if (ticket.boarded) {
-        displayControlResult(
-            "warning",
-            "Billet déjà contrôlé",
-            "L'embarquement de ce billet a déjà été enregistré."
-        );
-        return;
-    }
-
-    const departure = getDepartures().find(
-        item => item.id === ticket.departureId
-    );
-
-    if (!departure) {
-        displayControlResult(
-            "error",
-            "Départ introuvable",
-            "Le départ associé à ce billet n'existe plus."
-        );
-        return;
-    }
-
-    if (departure.date < todayString()) {
-        displayControlResult(
-            "error",
-            "Billet expiré",
-            "La date du voyage est dépassée."
-        );
-        return;
-    }
-
-    if (departure.date > todayString()) {
-        displayControlResult(
-            "warning",
-            "Voyage pas encore prévu",
-            `Ce billet est valable pour le ${formatDate(departure.date)}.`
-        );
-        return;
-    }
-
-    const confirmation = window.confirm(
-        `Billet valide.\n\n` +
-        `Voyageur : ${ticket.passengerName}\n` +
-        `Trajet : ${ticket.from} - ${ticket.to}\n` +
-        `Place : ${ticket.seat}\n\n` +
-        `Confirmer l'embarquement ?`
-    );
-
-    if (!confirmation) {
-        displayControlResult(
-            "warning",
-            "Contrôle non enregistré",
-            "L'embarquement n'a pas été enregistré."
-        );
-        return;
-    }
-
-    ticket.boarded = true;
-    ticket.status = "Embarqué";
-    ticket.boardedAt = new Date().toISOString();
-
-    saveTickets(tickets);
-
-    displayControlResult(
-        "success",
-        "Billet valide - Embarquement enregistré",
-        `
-            Voyageur : ${escapeHTML(ticket.passengerName)}<br>
-            Trajet : ${escapeHTML(ticket.from)} → ${escapeHTML(ticket.to)}<br>
-            Place : ${escapeHTML(ticket.seat)}<br>
-            Référence : ${escapeHTML(ticket.reference)}
-        `
-    );
-
-    renderDashboard();
-}
-
-function displayControlResult(type, title, message) {
-    const result = document.getElementById("controlResult");
-
-    result.className = `control-result ${type}`;
-    result.innerHTML = `
-        <h3>${escapeHTML(title)}</h3>
-        <p>${message}</p>
-    `;
-
-    showElement("controlResult");
-}
-
-
-/* =========================================================
-   14. ADMINISTRATION DES DÉPARTS
-========================================================= */
-
-function addDeparture(event) {
-    event.preventDefault();
-
-    const from = document.getElementById("adminFrom").value.trim();
-    const to = document.getElementById("adminTo").value.trim();
-    const date = document.getElementById("adminDate").value;
-    const time = document.getElementById("adminTime").value;
-    const price = Number(document.getElementById("adminPrice").value);
-    const seats = Number(document.getElementById("adminSeats").value);
-
-    if (!from || !to || !date || !time || price <= 0 || seats <= 0) {
-        showToast("Veuillez vérifier les informations du départ.", "error");
-        return;
-    }
-
-    if (from.toLowerCase() === to.toLowerCase()) {
-        showToast("Les villes de départ et d'arrivée doivent être différentes.", "error");
-        return;
-    }
-
-    if (date < todayString()) {
-        showToast("La date du départ ne peut pas être passée.", "error");
-        return;
-    }
-
-    const departures = getDepartures();
-
-    const departure = {
-        id: "DEP-" + Date.now(),
-        from,
-        to,
-        date,
-        time,
-        price,
-        totalSeats: seats,
-        seats
-    };
-
-    departures.push(departure);
-    saveDepartures(departures);
-
-    document.getElementById("adminDepartureForm").reset();
-
-    renderAdminDepartures();
-    renderDashboard();
-
-    showToast("Départ ajouté avec succès.");
-}
-
-function renderAdminDepartures() {
-    const tbody = document.getElementById("adminDepartureRows");
-    if (!tbody) return;
-
-    const departures = getDepartures();
-
-    tbody.innerHTML = "";
-
-    if (departures.length === 0) {
-        showElement("adminDepartureEmpty");
-        return;
-    }
-
-    hideElement("adminDepartureEmpty");
-
-    departures.forEach(departure => {
-        const row = document.createElement("tr");
-
-        row.innerHTML = `
-            <td>${escapeHTML(departure.from)} → ${escapeHTML(departure.to)}</td>
-            <td>${formatDate(departure.date)}</td>
-            <td>${escapeHTML(departure.time)}</td>
-            <td>${formatMoney(departure.price)}</td>
-            <td>${Number(departure.seats)} / ${Number(departure.totalSeats)}</td>
-            <td>
-                <button class="btn btn-small btn-secondary"
-                    data-edit-departure="${escapeHTML(departure.id)}">
-                    Modifier
-                </button>
-
-                <button class="btn btn-small btn-danger"
-                    data-delete-departure="${escapeHTML(departure.id)}">
-                    Supprimer
-                </button>
-            </td>
-        `;
-
-        tbody.appendChild(row);
-    });
-}
-
-function editDeparture(departureId) {
-    const departures = getDepartures();
-
-    const departure = departures.find(
-        item => item.id === departureId
-    );
-
-    if (!departure) {
-        showToast("Départ introuvable.", "error");
-        return;
-    }
-
-    const from = window.prompt("Ville de départ :", departure.from);
-    if (from === null) return;
-
-    const to = window.prompt("Ville d'arrivée :", departure.to);
-    if (to === null) return;
-
-    const date = window.prompt("Date (AAAA-MM-JJ) :", departure.date);
-    if (date === null) return;
-
-    const time = window.prompt("Heure (HH:MM) :", departure.time);
-    if (time === null) return;
-
-    const priceInput = window.prompt("Prix en FCFA :", departure.price);
-    if (priceInput === null) return;
-
-    const price = Number(priceInput);
-
-    if (
-        !from.trim() ||
-        !to.trim() ||
-        from.trim().toLowerCase() === to.trim().toLowerCase() ||
-        !date ||
-        !time ||
-        price <= 0 ||
-        date < todayString()
-    ) {
-        showToast("Informations invalides. Modification annulée.", "error");
-        return;
-    }
-
-    departure.from = from.trim();
-    departure.to = to.trim();
-    departure.date = date;
-    departure.time = time;
-    departure.price = price;
-
-    // Les billets existants conservent leur référence.
-    // Leurs informations de trajet sont actualisées.
-    const tickets = getTickets();
-
-    tickets.forEach(ticket => {
-        if (ticket.departureId === departureId) {
-            ticket.from = departure.from;
-            ticket.to = departure.to;
-            ticket.date = departure.date;
-            ticket.time = departure.time;
-            ticket.price = departure.price;
+        } finally {
+            setButtonLoading(button, false);
         }
     });
-
-    saveDepartures(departures);
-    saveTickets(tickets);
-
-    renderAdminDepartures();
-    renderDashboard();
-
-    showToast("Départ modifié.");
 }
-
-function deleteDeparture(departureId) {
-    const departures = getDepartures();
-
-    const departure = departures.find(
-        item => item.id === departureId
-    );
-
-    if (!departure) return;
-
-    const hasActiveTickets = getTickets().some(ticket =>
-        ticket.departureId === departureId &&
-        !isCancelled(ticket)
-    );
-
-    if (hasActiveTickets) {
-        showToast(
-            "Impossible de supprimer ce départ : des billets actifs y sont associés.",
-            "error"
-        );
-        return;
-    }
-
-    const confirmation = window.confirm(
-        `Voulez-vous vraiment supprimer le départ ${departure.from} - ${departure.to} ?`
-    );
-
-    if (!confirmation) return;
-
-    saveDepartures(
-        departures.filter(item => item.id !== departureId)
-    );
-
-    renderAdminDepartures();
-    renderDashboard();
-
-    showToast("Départ supprimé.");
-}
-
 
 /* =========================================================
-   15. ADMINISTRATION DES BILLETS
+   26. DÉCONNEXION
 ========================================================= */
 
-function renderAdminTickets() {
-    const tbody = document.getElementById("adminTicketRows");
-    if (!tbody) return;
-
-    const tickets = getTickets();
-
-    setText("adminTotalTickets", tickets.length);
-
-    setText(
-        "adminPaidTickets",
-        tickets.filter(ticket => isPaid(ticket) && !isCancelled(ticket)).length
-    );
-
-    setText(
-        "adminCancelledTickets",
-        tickets.filter(ticket => isCancelled(ticket)).length
-    );
-
-    setText(
-        "adminBoardedTickets",
-        tickets.filter(ticket => ticket.boarded && !isCancelled(ticket)).length
-    );
-
-    const query = (
-        document.getElementById("adminTicketSearch")?.value || ""
-    ).toLowerCase();
-
-    const filter = (
-        document.getElementById("adminTicketFilter")?.value || ""
-    ).toLowerCase();
-
-    const filteredTickets = tickets.filter(ticket => {
-        const searchable = [
-            ticket.reference,
-            ticket.passengerName,
-            ticket.passengerPhone,
-            ticket.from,
-            ticket.to
-        ].join(" ").toLowerCase();
-
-        const matchesSearch = searchable.includes(query);
-        const status = getTicketStatus(ticket).toLowerCase();
-        const matchesFilter = !filter || status === filter;
-
-        return matchesSearch && matchesFilter;
-    });
-
-    tbody.innerHTML = "";
-
-    if (filteredTickets.length === 0) {
-        showElement("adminTicketEmpty");
-        return;
-    }
-
-    hideElement("adminTicketEmpty");
-
-    filteredTickets.forEach(ticket => {
-        const row = document.createElement("tr");
-        const status = getTicketStatus(ticket);
-
-        let action = "";
-
-        if (!isCancelled(ticket) && !ticket.boarded) {
-            action = `
-                <button class="btn btn-small btn-danger"
-                    data-cancel-ticket="${escapeHTML(ticket.id)}">
-                    Annuler
-                </button>
-            `;
-        } else {
-            action = `<span class="muted-text">Aucune action</span>`;
-        }
-
-        row.innerHTML = `
-            <td><strong>${escapeHTML(ticket.reference)}</strong></td>
-            <td>${escapeHTML(ticket.passengerName)}</td>
-            <td>${escapeHTML(ticket.passengerPhone)}</td>
-            <td>${escapeHTML(ticket.from)} → ${escapeHTML(ticket.to)}</td>
-            <td>${escapeHTML(ticket.seat)}</td>
-            <td>${escapeHTML(ticket.paymentMethod)}</td>
-            <td>${statusBadge(status)}</td>
-            <td>${action}</td>
-        `;
-
-        tbody.appendChild(row);
-    });
-}
-
-function cancelTicket(ticketId) {
-    const tickets = getTickets();
-
-    const ticket = tickets.find(item => item.id === ticketId);
-
-    if (!ticket) {
-        showToast("Billet introuvable.", "error");
-        return;
-    }
-
-    if (isCancelled(ticket)) {
-        showToast("Ce billet est déjà annulé.", "warning");
-        return;
-    }
-
-    if (ticket.boarded) {
-        showToast(
-            "Impossible d'annuler un billet déjà utilisé pour l'embarquement.",
-            "error"
-        );
-        return;
-    }
-
-    const confirmation = window.confirm(
-        `Confirmer l'annulation du billet ${ticket.reference} ?`
-    );
-
-    if (!confirmation) return;
-
-    ticket.cancelled = true;
-    ticket.status = "Annulé";
-    ticket.cancelledAt = new Date().toISOString();
-
-    saveTickets(tickets);
-
-    // La place est remise à disposition une seule fois,
-    // au moment de l'annulation.
-    const departures = getDepartures();
-
-    const departure = departures.find(
-        item => item.id === ticket.departureId
-    );
-
-    if (departure) {
-        departure.seats = Math.min(
-            Number(departure.totalSeats),
-            Number(departure.seats) + 1
-        );
-
-        saveDepartures(departures);
-    }
-
-    renderAdminTickets();
-    renderTickets();
-    renderDashboard();
-    renderAdminDepartures();
-
-    showToast(`Billet ${ticket.reference} annulé.`);
-}
-
-
-/* =========================================================
-   16. ADMINISTRATION DES UTILISATEURS
-========================================================= */
-
-function addUser(event) {
-    event.preventDefault();
-
-    const name = document.getElementById("adminUserName").value.trim();
-    const email = document.getElementById("adminUserEmail").value.trim();
-    const role = document.getElementById("adminUserRole").value;
-
-    if (!name || !email || !role) {
-        showToast("Veuillez remplir tous les champs.", "error");
-        return;
-    }
-
-    const users = getUsers();
-
-    const emailExists = users.some(
-        user => user.email.toLowerCase() === email.toLowerCase()
-    );
-
-    if (emailExists) {
-        showToast("Cette adresse e-mail existe déjà.", "error");
-        return;
-    }
-
-    const user = {
-        id: "USR-" + Date.now(),
-        name,
-        email,
-        role,
-        active: true
-    };
-
-    users.push(user);
-    saveUsers(users);
-
-    document.getElementById("adminUserForm").reset();
-
-    renderAdminUsers();
-
-    showToast("Utilisateur ajouté à la démonstration.");
-}
-
-function renderAdminUsers() {
-    const tbody = document.getElementById("adminUserRows");
-    if (!tbody) return;
-
-    const users = getUsers();
-
-    tbody.innerHTML = "";
-
-    if (users.length === 0) {
-        showElement("adminUserEmpty");
-        return;
-    }
-
-    hideElement("adminUserEmpty");
-
-    users.forEach(user => {
-        const row = document.createElement("tr");
-
-        const status = user.active
-            ? statusBadge("Actif")
-            : statusBadge("Désactivé");
-
-        const toggleLabel = user.active
-            ? "Désactiver"
-            : "Activer";
-
-        row.innerHTML = `
-            <td>${escapeHTML(user.name)}</td>
-            <td>${escapeHTML(user.email)}</td>
-            <td>${escapeHTML(user.role)}</td>
-            <td>${status}</td>
-            <td>
-                <button class="btn btn-small btn-secondary"
-                    data-toggle-user="${escapeHTML(user.id)}">
-                    ${toggleLabel}
-                </button>
-
-                <button class="btn btn-small btn-danger"
-                    data-delete-user="${escapeHTML(user.id)}">
-                    Supprimer
-                </button>
-            </td>
-        `;
-
-        tbody.appendChild(row);
-    });
-}
-
-function toggleUser(userId) {
-    const users = getUsers();
-
-    const user = users.find(item => item.id === userId);
-
-    if (!user) return;
-
-    user.active = !user.active;
-
-    saveUsers(users);
-    renderAdminUsers();
-
-    showToast(
-        user.active
-            ? "Utilisateur activé."
-            : "Utilisateur désactivé."
-    );
-}
-
-function deleteUser(userId) {
-    const users = getUsers();
-
-    const user = users.find(item => item.id === userId);
-
-    if (!user) return;
-
-    if (user.role === "Administrateur") {
-        showToast(
-            "La suppression d'un administrateur est bloquée dans cette démonstration.",
-            "error"
-        );
-        return;
-    }
-
-    const confirmation = window.confirm(
-        `Supprimer l'utilisateur ${user.name} ?`
-    );
-
-    if (!confirmation) return;
-
-    saveUsers(users.filter(item => item.id !== userId));
-
-    renderAdminUsers();
-
-    showToast("Utilisateur supprimé de la démonstration.");
-}
-
-
-/* =========================================================
-   17. ÉVÉNEMENTS
-========================================================= */
-
-function initializeEvents() {
-    // Connexion
-    document.getElementById("loginForm")
-        ?.addEventListener("submit", login);
-
-    // Déconnexion
-    document.getElementById("logoutBtn")
-        ?.addEventListener("click", logout);
-
-    // Navigation
-    document.querySelectorAll("[data-page]").forEach(button => {
-        button.addEventListener("click", () => {
-            navigate(button.dataset.page);
-        });
-    });
-
-    // Recherche des départs
-    document.getElementById("departureSearchForm")
-        ?.addEventListener("submit", searchDepartures);
-
-    // Réservation
-    document.getElementById("bookingForm")
-        ?.addEventListener("submit", confirmBooking);
-
-    // Recherche des billets
-    document.getElementById("ticketSearch")
-        ?.addEventListener("input", event => {
-            renderTickets(event.target.value);
+if ($("logoutBtn")) {
+    $("logoutBtn").addEventListener("click", () => {
+        API.logout();
+
+        currentUser = null;
+        currentPage = "dashboard";
+        selectedTrip = null;
+        editingTripId = null;
+
+        trips = [];
+        routes = [];
+        agencies = [];
+        vehicles = [];
+        drivers = [];
+        reservations = [];
+        tickets = [];
+        payments = [];
+        refunds = [];
+        users = [];
+        seats = [];
+
+        $("appSection").hidden = true;
+        $("loginSection").hidden = false;
+
+        $("loginForm").reset();
+
+        resetTripEditMode(false);
+
+        document.querySelectorAll(".page").forEach(page => {
+            page.hidden = true;
+            page.classList.remove("active");
         });
 
-    // Export CSV
-    document.getElementById("exportTicketsBtn")
-        ?.addEventListener("click", exportTicketsCSV);
-
-    // Contrôle des billets
-    document.getElementById("controlForm")
-        ?.addEventListener("submit", controlTicket);
-
-    // Ajout d'un départ
-    document.getElementById("adminDepartureForm")
-        ?.addEventListener("submit", addDeparture);
-
-    // Ajout d'un utilisateur
-    document.getElementById("adminUserForm")
-        ?.addEventListener("submit", addUser);
-
-    // Recherche et filtre des billets administrateur
-    document.getElementById("adminTicketSearch")
-        ?.addEventListener("input", renderAdminTickets);
-
-    document.getElementById("adminTicketFilter")
-        ?.addEventListener("change", renderAdminTickets);
-
-    // Actions sur les tableaux : délégation d'événements.
-    document.addEventListener("click", event => {
-        const selectButton = event.target.closest("[data-select-departure]");
-
-        if (selectButton) {
-            selectDeparture(selectButton.dataset.selectDeparture);
-            return;
-        }
-
-        const editButton = event.target.closest("[data-edit-departure]");
-
-        if (editButton) {
-            editDeparture(editButton.dataset.editDeparture);
-            return;
-        }
-
-        const deleteDepartureButton = event.target.closest("[data-delete-departure]");
-
-        if (deleteDepartureButton) {
-            deleteDeparture(deleteDepartureButton.dataset.deleteDeparture);
-            return;
-        }
-
-        const cancelButton = event.target.closest("[data-cancel-ticket]");
-
-        if (cancelButton) {
-            cancelTicket(cancelButton.dataset.cancelTicket);
-            return;
-        }
-
-        const toggleButton = event.target.closest("[data-toggle-user]");
-
-        if (toggleButton) {
-            toggleUser(toggleButton.dataset.toggleUser);
-            return;
-        }
-
-        const deleteUserButton = event.target.closest("[data-delete-user]");
-
-        if (deleteUserButton) {
-            deleteUser(deleteUserButton.dataset.deleteUser);
-        }
+        notify("Déconnexion effectuée.");
     });
 }
 
-
 /* =========================================================
-   18. DÉMARRAGE DE L'APPLICATION
+   27. REPRISE D'UNE SESSION EXISTANTE
 ========================================================= */
 
-document.addEventListener("DOMContentLoaded", () => {
-    initializeData();
-    initializeEvents();
+document.addEventListener("DOMContentLoaded", async () => {
+    if (!API || typeof API.isAuthenticated !== "function") {
+        console.error(
+            "TransitGo : api.js ne fournit pas la fonction isAuthenticated()."
+        );
+        return;
+    }
 
-    console.log("TransitGo est prêt.");
+    if (!API.isAuthenticated()) {
+        return;
+    }
+
+    try {
+        const user = await API.getCurrentUser();
+        await startApplication(user);
+
+    } catch (error) {
+        console.error(
+            "Impossible de reprendre la session :",
+            error
+        );
+
+        API.logout();
+
+        $("loginSection").hidden = false;
+        $("appSection").hidden = true;
+    }
 });

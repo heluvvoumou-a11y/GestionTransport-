@@ -1,48 +1,36 @@
 /* =========================================================
-   TRANSITGO - FEUILLE DE STYLE PRINCIPALE
-   Interface de gestion de transport de voyageurs
+   TRANSITGO — DESIGN SYSTEM PROFESSIONNEL
+   Compatible avec index.html et app.js
 ========================================================= */
 
-
-/* =========================================================
-   1. VARIABLES ET CONFIGURATION GÉNÉRALE
-========================================================= */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap');
 
 :root {
     --navy: #142b55;
-    --navy-dark: #0d1e3d;
+    --navy-dark: #0c1c38;
     --blue: #3569d4;
     --blue-dark: #2454b5;
     --blue-light: #edf3ff;
-
     --green: #15966a;
     --green-light: #e8f7f0;
-
-    --orange: #e89a32;
+    --orange: #df922b;
     --orange-light: #fff4e4;
-
     --red: #d94a4a;
     --red-light: #fff0f0;
 
-    --purple: #7954c7;
-    --purple-light: #f1edff;
-
-    --background: #f5f7fb;
+    --background: #f4f7fc;
     --white: #ffffff;
-
     --text: #26344d;
-    --muted: #7d899d;
-    --border: #e5eaf2;
+    --muted: #8490a3;
+    --border: #e7ecf4;
 
-    --shadow: 0 5px 20px rgba(20, 43, 85, 0.06);
-    --shadow-hover: 0 10px 25px rgba(20, 43, 85, 0.10);
+    --shadow: 0 4px 18px rgba(20, 43, 85, .045);
+    --shadow-hover: 0 12px 28px rgba(20, 43, 85, .09);
 
-    --radius: 12px;
-    --radius-small: 8px;
-
+    --radius: 15px;
+    --radius-small: 10px;
     --sidebar-width: 255px;
 }
-
 
 * {
     margin: 0;
@@ -50,20 +38,18 @@
     box-sizing: border-box;
 }
 
-
 html {
     scroll-behavior: smooth;
 }
 
-
 body {
-    font-family: "DM Sans", sans-serif;
+    min-height: 100vh;
+    font-family: "DM Sans", Arial, sans-serif;
     background: var(--background);
     color: var(--text);
     font-size: 14px;
     line-height: 1.6;
 }
-
 
 button,
 input,
@@ -72,33 +58,18 @@ textarea {
     font: inherit;
 }
 
-
 button {
     cursor: pointer;
 }
 
-
 button:disabled {
     cursor: not-allowed;
-    opacity: 0.55;
+    opacity: .55;
 }
 
-
-input,
-select,
-textarea {
-    outline: none;
-}
-
-
-.hidden {
+[hidden] {
     display: none !important;
 }
-
-
-/* =========================================================
-   2. TYPOGRAPHIE
-========================================================= */
 
 h1,
 h2,
@@ -109,1314 +80,323 @@ h4 {
     line-height: 1.3;
 }
 
-
 h1 {
-    font-size: 25px;
+    font-size: 27px;
     font-weight: 800;
 }
-
 
 h2 {
     font-size: 21px;
     font-weight: 800;
 }
 
-
 h3 {
     font-size: 16px;
     font-weight: 700;
 }
 
-
 p {
     color: var(--muted);
 }
 
-
 /* =========================================================
-   3. PAGE DE CONNEXION
+   1. PAGE DE CONNEXION
 ========================================================= */
 
-.login-view {
+#loginSection {
     min-height: 100vh;
+    width: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 35px 20px;
+    padding: 30px 18px;
 
     background:
-        radial-gradient(circle at 15% 20%, rgba(53, 105, 212, 0.15), transparent 30%),
-        radial-gradient(circle at 85% 80%, rgba(21, 150, 106, 0.10), transparent 30%),
-        var(--background);
+        radial-gradient(circle at 10% 15%, rgba(53, 105, 212, .18), transparent 32%),
+        radial-gradient(circle at 90% 85%, rgba(21, 150, 106, .10), transparent 30%),
+        linear-gradient(135deg, #f5f8ff, #edf3fc);
 }
-
 
 .login-container {
     width: 100%;
-    max-width: 430px;
+    max-width: 460px;
 }
 
+.login-card {
+    width: 100%;
+    padding: 42px 38px;
+    background: rgba(255, 255, 255, .97);
+    border: 1px solid rgba(226, 233, 245, .9);
+    border-radius: 23px;
+    box-shadow: 0 20px 65px rgba(20, 43, 85, .11);
+}
 
-.login-brand {
+.login-card h1 {
     text-align: center;
-    margin-bottom: 28px;
-}
-
-
-.brand-logo {
-    width: 55px;
-    height: 55px;
-    background: linear-gradient(135deg, var(--blue), var(--navy));
-    color: var(--white);
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    border-radius: 15px;
-    font-family: "Manrope", sans-serif;
-    font-weight: 800;
-    font-size: 20px;
-
-    box-shadow: 0 8px 18px rgba(53, 105, 212, 0.25);
-}
-
-
-.login-brand .brand-logo {
-    margin: 0 auto 13px;
-}
-
-
-.login-brand h1 {
-    font-size: 30px;
+    font-size: 34px;
+    letter-spacing: -1.2px;
+    color: var(--blue);
     margin-bottom: 5px;
 }
 
-
-.login-brand p {
-    font-size: 14px;
-}
-
-
-.login-card {
-    background: var(--white);
-    border: 1px solid var(--border);
-    border-radius: 18px;
-    padding: 35px;
-
-    box-shadow: var(--shadow);
-}
-
-
-.login-card h2 {
-    margin-bottom: 6px;
-    font-size: 23px;
-}
-
-
 .login-card > p {
-    margin-bottom: 25px;
+    text-align: center;
+    font-size: 13px;
+    margin-bottom: 30px;
 }
 
-
-.demo-notice {
-    margin-top: 20px;
-    padding: 12px;
-
-    background: var(--blue-light);
-    border-radius: var(--radius-small);
-
-    font-size: 12px;
-    line-height: 1.6;
-    color: var(--navy);
-}
-
-
-/* =========================================================
-   4. FORMULAIRES
-========================================================= */
-
-.form-group {
+.login-card form {
     display: flex;
     flex-direction: column;
-    gap: 7px;
-    margin-bottom: 17px;
+    gap: 10px;
 }
 
-
-.form-group label {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--text);
-}
-
-
-.form-group input,
-.form-group select,
-.form-group textarea,
-.search-toolbar input,
-.search-toolbar select,
-.control-form input {
-    width: 100%;
-    min-height: 44px;
-
-    padding: 10px 13px;
-
-    border: 1px solid var(--border);
-    border-radius: var(--radius-small);
-
-    background: var(--white);
-    color: var(--text);
-
-    transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-
-.form-group input::placeholder,
-.search-toolbar input::placeholder,
-.control-form input::placeholder {
-    color: #a5afbd;
-}
-
-
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus,
-.search-toolbar input:focus,
-.search-toolbar select:focus,
-.control-form input:focus {
-    border-color: var(--blue);
-    box-shadow: 0 0 0 3px rgba(53, 105, 212, 0.10);
-}
-
-
-.form-group input:disabled,
-.form-group select:disabled {
-    background: #f0f2f6;
-    cursor: not-allowed;
-}
-
-
-.form-help {
+.login-card label {
+    margin-top: 9px;
     font-size: 12px;
-    margin-top: 13px;
-    line-height: 1.6;
-}
-
-
-/* =========================================================
-   5. BOUTONS
-========================================================= */
-
-.btn {
-    min-height: 42px;
-    padding: 10px 17px;
-
-    border: none;
-    border-radius: var(--radius-small);
-
-    font-size: 13px;
     font-weight: 700;
-
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 7px;
-
-    transition: all 0.2s ease;
+    color: #43516a;
 }
 
-
-.btn-primary {
-    background: var(--blue);
-    color: var(--white);
-}
-
-
-.btn-primary:hover {
-    background: var(--blue-dark);
-    transform: translateY(-1px);
-    box-shadow: 0 5px 12px rgba(53, 105, 212, 0.18);
-}
-
-
-.btn-secondary {
-    background: var(--blue-light);
-    color: var(--blue);
-    border: 1px solid #dbe6ff;
-}
-
-
-.btn-secondary:hover {
-    background: #dce8ff;
-}
-
-
-.btn-danger {
-    background: var(--red-light);
-    color: var(--red);
-    border: 1px solid #ffdada;
-}
-
-
-.btn-danger:hover {
-    background: #ffe0e0;
-}
-
-
-.btn-full {
+.login-card input {
     width: 100%;
+    height: 51px;
+    padding: 0 16px;
+    border: 1px solid #e0e7f1;
+    border-radius: 11px;
+    background: #f9fbfe;
+    color: var(--text);
+    transition: .2s ease;
 }
 
-
-.btn-small {
-    min-height: 31px;
-    padding: 6px 10px;
-    font-size: 11px;
-    border-radius: 6px;
+.login-card input:focus {
+    outline: none;
+    border-color: var(--blue);
+    background: white;
+    box-shadow: 0 0 0 4px rgba(53, 105, 212, .10);
 }
 
+.login-card input::placeholder {
+    color: #a6b0bf;
+}
 
-.logout-btn {
-    width: 100%;
-    padding: 12px;
-
+.login-card button {
+    height: 51px;
+    margin-top: 17px;
     border: none;
-    border-radius: var(--radius-small);
-
-    background: rgba(255, 255, 255, 0.08);
-    color: #e5edff;
-
-    font-size: 13px;
-    font-weight: 600;
-    text-align: left;
-
-    transition: background 0.2s;
+    border-radius: 11px;
+    background: linear-gradient(135deg, #4279e6, #2859bd);
+    color: white;
+    font-weight: 800;
+    font-size: 14px;
+    box-shadow: 0 7px 18px rgba(53, 105, 212, .20);
+    transition: .2s ease;
 }
 
-
-.logout-btn:hover {
-    background: rgba(255, 255, 255, 0.15);
+.login-card button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 23px rgba(53, 105, 212, .27);
 }
 
+#loginError {
+    min-height: 18px;
+    color: var(--red);
+    font-size: 12px;
+    text-align: center;
+}
 
 /* =========================================================
-   6. STRUCTURE PRINCIPALE
+   2. STRUCTURE DE L'APPLICATION
 ========================================================= */
 
-.app-layout {
+#appSection {
     min-height: 100vh;
     display: flex;
 }
 
+.app-container {
+    min-height: 100vh;
+    width: 100%;
+}
 
 .sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 50;
+
     width: var(--sidebar-width);
-    min-width: var(--sidebar-width);
-
     min-height: 100vh;
-
-    background: var(--navy-dark);
-    color: var(--white);
-
-    padding: 22px 16px;
 
     display: flex;
     flex-direction: column;
 
-    position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
+    padding: 24px 17px;
 
-    z-index: 20;
+    background: linear-gradient(180deg, #142b55 0%, #0c1c38 100%);
+    box-shadow: 5px 0 25px rgba(13, 30, 61, .07);
 }
 
+.brand {
+    padding: 8px 10px 25px;
+    border-bottom: 1px solid rgba(255, 255, 255, .12);
+}
 
-.sidebar-brand {
+.brand h2 {
+    color: white;
+    font-size: 25px;
+    letter-spacing: -.8px;
+}
+
+.brand h2::before {
+    content: "";
+    display: inline-block;
+    width: 9px;
+    height: 25px;
+    margin-right: 10px;
+    vertical-align: -4px;
+    border-radius: 5px;
+    background: #6b9aff;
+}
+
+.user-info {
     display: flex;
-    align-items: center;
-    gap: 11px;
-
-    padding: 3px 5px 24px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+    flex-direction: column;
+    gap: 4px;
+    padding: 19px 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, .12);
 }
 
-
-.sidebar-brand .brand-logo {
-    width: 43px;
-    height: 43px;
-    min-width: 43px;
-    border-radius: 11px;
-    font-size: 16px;
+.user-info strong {
+    color: white;
+    font-size: 13px;
 }
 
-
-.sidebar-brand h2 {
-    color: var(--white);
-    font-size: 17px;
-}
-
-
-.sidebar-brand span {
-    color: #9aabc8;
-    font-size: 10px;
-}
-
-
-.sidebar-user {
-    display: flex;
-    align-items: center;
-    gap: 11px;
-
-    padding: 19px 5px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.10);
-}
-
-
-.user-avatar {
-    width: 38px;
-    height: 38px;
-    min-width: 38px;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    border-radius: 50%;
-    background: var(--blue);
-    color: var(--white);
-
-    font-size: 12px;
-    font-weight: 800;
-}
-
-
-.sidebar-user strong {
-    display: block;
-    color: var(--white);
-    font-size: 12px;
-}
-
-
-.sidebar-user span {
-    display: block;
-    color: #9aabc8;
+.user-info span {
+    color: #aabbd8;
     font-size: 11px;
 }
 
-
-.sidebar-nav {
+#mainNav {
     flex: 1;
-    padding-top: 22px;
     overflow-y: auto;
+    padding-top: 20px;
 }
 
-
-.nav-label {
-    padding: 0 10px;
-    margin-bottom: 10px;
-
-    color: #8192b1;
-    font-size: 10px;
-    font-weight: 800;
-    letter-spacing: 1px;
+#mainNav::-webkit-scrollbar {
+    width: 4px;
 }
 
-
-.admin-nav-label {
-    margin-top: 28px;
+#mainNav::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, .2);
+    border-radius: 10px;
 }
-
 
 .nav-link {
     width: 100%;
+    min-height: 44px;
 
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 11px;
 
-    padding: 12px 13px;
-    margin-bottom: 5px;
+    margin-bottom: 6px;
+    padding: 11px 13px;
 
-    border: none;
-    border-radius: 8px;
+    border: 0;
+    border-radius: 10px;
 
     background: transparent;
-    color: #c0cbe0;
+    color: #c2cee2;
 
     text-align: left;
-    font-size: 13px;
-    font-weight: 500;
+    font-size: 12px;
+    font-weight: 600;
 
-    transition: all 0.2s;
+    transition: .2s ease;
 }
-
-
-.nav-link span {
-    width: 19px;
-    text-align: center;
-    font-size: 15px;
-}
-
 
 .nav-link:hover {
-    background: rgba(255, 255, 255, 0.08);
-    color: var(--white);
+    background: rgba(255, 255, 255, .09);
+    color: white;
+    transform: translateX(2px);
 }
-
 
 .nav-link.active {
-    background: var(--blue);
-    color: var(--white);
+    background: linear-gradient(135deg, #4279e6, #2859bd);
+    color: white;
+    box-shadow: 0 5px 15px rgba(53, 105, 212, .25);
+}
+
+.logout-btn {
+    width: 100%;
+    min-height: 43px;
+    margin-top: 20px;
+    padding: 11px 14px;
+
+    border: 1px solid rgba(255, 255, 255, .13);
+    border-radius: 10px;
+
+    background: rgba(255, 255, 255, .07);
+    color: white;
+
+    text-align: left;
+    font-size: 12px;
     font-weight: 700;
-    box-shadow: 0 4px 12px rgba(53, 105, 212, 0.25);
+
+    transition: .2s ease;
 }
 
-
-.sidebar-bottom {
-    padding-top: 15px;
-    border-top: 1px solid rgba(255, 255, 255, 0.10);
+.logout-btn:hover {
+    background: rgba(255, 255, 255, .15);
 }
 
+/* =========================================================
+   3. CONTENU PRINCIPAL
+========================================================= */
 
 .main-content {
     flex: 1;
     min-width: 0;
-
     margin-left: var(--sidebar-width);
-    padding: 27px 32px;
+    padding: 30px 36px;
 }
-
-
-/* =========================================================
-   7. BARRE SUPÉRIEURE
-========================================================= */
 
 .topbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
 
-    gap: 15px;
-    margin-bottom: 30px;
-}
+    min-height: 65px;
+    margin-bottom: 27px;
+    padding-bottom: 19px;
 
+    border-bottom: 1px solid var(--border);
+}
 
 .topbar h1 {
-    font-size: 25px;
+    font-size: 26px;
+    letter-spacing: -.8px;
 }
-
-
-.topbar-subtitle {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    font-weight: 700;
-    margin-bottom: 3px;
-}
-
-
-.topbar-right {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-
-.connection-status {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-
-    padding: 7px 11px;
-    border-radius: 30px;
-
-    background: var(--green-light);
-    color: var(--green);
-
-    font-size: 11px;
-    font-weight: 700;
-}
-
-
-.status-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--green);
-}
-
 
 /* =========================================================
-   8. PAGES ET TITRES DE SECTION
+   4. NAVIGATION DES PAGES
 ========================================================= */
 
 .page {
     display: none;
+    animation: appear .22s ease;
 }
-
 
 .page.active {
     display: block;
 }
 
-
-.welcome-section,
-.section-heading {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-
-    gap: 15px;
-    margin-bottom: 22px;
-}
-
-
-.welcome-section h2,
-.section-heading h2 {
-    margin-bottom: 5px;
-}
-
-
-.section-heading p {
-    font-size: 13px;
-}
-
-
-/* =========================================================
-   9. CARTES STATISTIQUES
-========================================================= */
-
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 16px;
-
-    margin-bottom: 25px;
-}
-
-
-.stat-card {
-    min-width: 0;
-
-    display: flex;
-    align-items: center;
-    gap: 13px;
-
-    padding: 19px;
-
-    background: var(--white);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-
-    box-shadow: var(--shadow);
-
-    transition: transform 0.2s, box-shadow 0.2s;
-}
-
-
-.stat-card:hover {
-    transform: translateY(-3px);
-    box-shadow: var(--shadow-hover);
-}
-
-
-.stat-icon {
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    border-radius: 11px;
-    font-size: 19px;
-}
-
-
-.stat-icon.blue {
-    background: var(--blue-light);
-    color: var(--blue);
-}
-
-
-.stat-icon.green {
-    background: var(--green-light);
-    color: var(--green);
-}
-
-
-.stat-icon.orange {
-    background: var(--orange-light);
-    color: var(--orange);
-}
-
-
-.stat-icon.purple {
-    background: var(--purple-light);
-    color: var(--purple);
-}
-
-
-.stat-card p {
-    font-size: 11px;
-    font-weight: 600;
-    margin-bottom: 3px;
-}
-
-
-.stat-card h3 {
-    font-size: 23px;
-    font-weight: 800;
-}
-
-
-/* =========================================================
-   10. PANNEAUX
-========================================================= */
-
-.panel {
-    background: var(--white);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-
-    padding: 22px;
-    margin-bottom: 22px;
-
-    box-shadow: var(--shadow);
-}
-
-
-.panel > h3 {
-    margin-bottom: 18px;
-}
-
-
-.panel-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-
-    gap: 12px;
-    margin-bottom: 19px;
-}
-
-
-.panel-header h3 {
-    margin-bottom: 4px;
-}
-
-
-.panel-header p {
-    font-size: 12px;
-}
-
-
-/* =========================================================
-   11. TABLEAUX
-========================================================= */
-
-.table-responsive {
-    width: 100%;
-    overflow-x: auto;
-}
-
-
-table {
-    width: 100%;
-    min-width: 650px;
-
-    border-collapse: collapse;
-    text-align: left;
-}
-
-
-thead {
-    background: #f7f9fc;
-}
-
-
-th {
-    padding: 13px 12px;
-
-    color: #75839a;
-    font-size: 10px;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-
-    border-bottom: 1px solid var(--border);
-    white-space: nowrap;
-}
-
-
-td {
-    padding: 14px 12px;
-
-    color: var(--text);
-    font-size: 12px;
-
-    border-bottom: 1px solid #edf0f5;
-    vertical-align: middle;
-}
-
-
-tbody tr:last-child td {
-    border-bottom: none;
-}
-
-
-tbody tr:hover {
-    background: #fafbfd;
-}
-
-
-td strong {
-    color: var(--navy);
-    font-weight: 700;
-}
-
-
-td .btn {
-    margin: 2px;
-}
-
-
-/* =========================================================
-   12. STATUTS DES BILLETS ET UTILISATEURS
-========================================================= */
-
-.status-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-
-    padding: 5px 9px;
-    border-radius: 30px;
-
-    font-size: 10px;
-    font-weight: 800;
-    white-space: nowrap;
-}
-
-
-.status-paid {
-    background: var(--green-light);
-    color: var(--green);
-}
-
-
-.status-cancelled {
-    background: var(--red-light);
-    color: var(--red);
-}
-
-
-.status-boarded {
-    background: var(--blue-light);
-    color: var(--blue);
-}
-
-
-.status-pending {
-    background: var(--orange-light);
-    color: #bd781e;
-}
-
-
-.muted-text {
-    color: var(--muted);
-    font-size: 11px;
-}
-
-
-/* =========================================================
-   13. RECHERCHE ET FILTRES
-========================================================= */
-
-.search-form {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
-    align-items: end;
-    gap: 13px;
-}
-
-
-.search-form .form-group {
-    margin-bottom: 0;
-}
-
-
-.search-form > button {
-    margin-bottom: 0;
-}
-
-
-.search-toolbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-
-    gap: 12px;
-    margin-bottom: 18px;
-}
-
-
-.search-toolbar input {
-    max-width: 400px;
-}
-
-
-.search-toolbar select {
-    max-width: 210px;
-}
-
-
-/* =========================================================
-   14. CARTES DE DÉPART
-========================================================= */
-
-.departure-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 17px;
-}
-
-
-.departure-card {
-    padding: 21px;
-
-    background: var(--white);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-
-    box-shadow: var(--shadow);
-
-    transition: transform 0.2s, box-shadow 0.2s;
-}
-
-
-.departure-card:hover {
-    transform: translateY(-3px);
-    box-shadow: var(--shadow-hover);
-}
-
-
-.departure-card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-
-    gap: 10px;
-    margin-bottom: 15px;
-}
-
-
-.departure-card-header strong {
-    color: var(--blue);
-    font-size: 15px;
-}
-
-
-.departure-tag {
-    padding: 5px 9px;
-    border-radius: 30px;
-
-    background: var(--green-light);
-    color: var(--green);
-
-    font-size: 10px;
-    font-weight: 800;
-}
-
-
-.departure-card h3 {
-    font-size: 18px;
-    margin-bottom: 14px;
-}
-
-
-.departure-details {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-
-    margin-bottom: 18px;
-}
-
-
-.departure-details span {
-    color: var(--muted);
-    font-size: 12px;
-}
-
-
-/* =========================================================
-   15. RÉSERVATION
-========================================================= */
-
-.booking-layout {
-    display: grid;
-    grid-template-columns: 1.15fr 0.85fr;
-    align-items: start;
-    gap: 20px;
-}
-
-
-#selectedDepartureInfo {
-    border-left: 4px solid var(--blue);
-}
-
-
-#selectedDepartureDetails {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-
-    margin-top: 12px;
-}
-
-
-#selectedDepartureDetails p {
-    padding: 10px;
-    border-radius: 7px;
-    background: #f7f9fc;
-
-    font-size: 12px;
-}
-
-
-#selectedDepartureDetails strong {
-    color: var(--navy);
-}
-
-
-.seat-legend {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-
-    margin: 16px 0;
-}
-
-
-.seat-legend span {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-
-    font-size: 11px;
-    color: var(--muted);
-}
-
-
-.seat-example {
-    width: 13px;
-    height: 13px;
-    border-radius: 4px;
-}
-
-
-.seat-example.available {
-    background: #e5edf9;
-}
-
-
-.seat-example.selected {
-    background: var(--blue);
-}
-
-
-.seat-example.occupied {
-    background: #d6dce5;
-}
-
-
-.seat-map {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(35px, 48px));
-    justify-content: center;
-    gap: 11px;
-
-    padding: 23px 10px;
-    margin-top: 15px;
-
-    background: #f7f9fc;
-    border: 1px dashed #d9e0ec;
-    border-radius: 12px;
-}
-
-
-.seat {
-    width: 100%;
-    aspect-ratio: 1;
-
-    border: none;
-    border-radius: 8px;
-
-    font-size: 12px;
-    font-weight: 800;
-
-    transition: transform 0.15s, background 0.15s;
-}
-
-
-.seat.available {
-    background: #e5edf9;
-    color: var(--navy);
-}
-
-
-.seat.available:hover {
-    background: #d3e1fb;
-    transform: scale(1.06);
-}
-
-
-.seat.selected {
-    background: var(--blue);
-    color: var(--white);
-}
-
-
-.seat.occupied {
-    background: #d6dce5;
-    color: #8a95a5;
-}
-
-
-.selected-seat-text {
-    margin-top: 15px;
-    text-align: center;
-    color: var(--blue);
-    font-weight: 700;
-    font-size: 12px;
-}
-
-
-.payment-info {
-    padding: 13px;
-    margin-bottom: 18px;
-
-    border-radius: 8px;
-    background: var(--orange-light);
-    color: #91601c;
-
-    font-size: 11px;
-    line-height: 1.6;
-}
-
-
-.payment-info strong {
-    color: #835414;
-}
-
-
-/* =========================================================
-   16. CONTRÔLE DES BILLETS
-========================================================= */
-
-.control-panel {
-    max-width: 720px;
-    margin: 0 auto;
-    padding: 35px;
-    text-align: center;
-}
-
-
-.control-icon {
-    width: 65px;
-    height: 65px;
-
-    margin: 0 auto 18px;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    border-radius: 18px;
-    background: var(--blue-light);
-
-    font-size: 28px;
-}
-
-
-.control-panel h3 {
-    font-size: 20px;
-    margin-bottom: 8px;
-}
-
-
-.control-panel > p {
-    margin-bottom: 23px;
-    font-size: 13px;
-}
-
-
-.control-form {
-    display: flex;
-    gap: 10px;
-}
-
-
-.control-form input {
-    flex: 1;
-    min-width: 0;
-}
-
-
-.control-result {
-    margin-top: 22px;
-    padding: 18px;
-
-    border-radius: 10px;
-    text-align: left;
-}
-
-
-.control-result h3 {
-    font-size: 15px;
-    margin-bottom: 8px;
-}
-
-
-.control-result p {
-    font-size: 12px;
-    line-height: 1.8;
-}
-
-
-.control-result.success {
-    background: var(--green-light);
-    border: 1px solid #c8eedb;
-}
-
-
-.control-result.success h3,
-.control-result.success p {
-    color: #147a55;
-}
-
-
-.control-result.error {
-    background: var(--red-light);
-    border: 1px solid #ffd5d5;
-}
-
-
-.control-result.error h3,
-.control-result.error p {
-    color: #bd3636;
-}
-
-
-.control-result.warning {
-    background: var(--orange-light);
-    border: 1px solid #f6dfb8;
-}
-
-
-.control-result.warning h3,
-.control-result.warning p {
-    color: #98651d;
-}
-
-
-/* =========================================================
-   17. ADMINISTRATION
-========================================================= */
-
-.admin-form {
-    width: 100%;
-}
-
-
-.form-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0 17px;
-}
-
-
-.form-grid .form-group {
-    min-width: 0;
-}
-
-
-.admin-form > button {
-    margin-top: 3px;
-}
-
-
-/* =========================================================
-   18. ÉTATS VIDES
-========================================================= */
-
-.empty-state {
-    padding: 30px 15px;
-
-    text-align: center;
-    color: var(--muted);
-
-    font-size: 12px;
-
-    background: #fafbfd;
-    border: 1px dashed var(--border);
-    border-radius: 9px;
-
-    margin-top: 12px;
-}
-
-
-/* =========================================================
-   19. NOTIFICATIONS
-========================================================= */
-
-.toast {
-    position: fixed;
-    right: 25px;
-    bottom: 25px;
-
-    max-width: 360px;
-    padding: 14px 20px;
-
-    border-radius: 9px;
-
-    background: var(--navy);
-    color: var(--white);
-
-    font-size: 12px;
-    font-weight: 700;
-
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-
-    z-index: 1000;
-
-    animation: toastAppear 0.25s ease;
-}
-
-
-.toast.success {
-    background: var(--green);
-}
-
-
-.toast.error {
-    background: var(--red);
-}
-
-
-.toast.warning {
-    background: #bd781e;
-}
-
-
-@keyframes toastAppear {
+@keyframes appear {
     from {
         opacity: 0;
-        transform: translateY(10px);
+        transform: translateY(6px);
     }
 
     to {
@@ -1425,121 +405,628 @@ td .btn {
     }
 }
 
-
 /* =========================================================
-   20. RESPONSIVE - ÉCRANS MOYENS
+   5. PANNEAUX ET CARTES
 ========================================================= */
 
-@media (max-width: 1150px) {
-
-    .stats-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .search-form {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .search-form > button {
-        width: 100%;
-    }
-
-    .main-content {
-        padding: 24px;
-    }
-
+.panel {
+    background: white;
+    border: 1px solid #e9eef5;
+    border-radius: var(--radius);
+    padding: 25px;
+    margin-bottom: 22px;
+    box-shadow: var(--shadow);
+    transition: box-shadow .2s ease;
 }
 
+.panel h2 {
+    margin-bottom: 15px;
+}
+
+.panel h3 {
+    margin-bottom: 12px;
+}
+
+.panel:hover {
+    box-shadow: var(--shadow-hover);
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 17px;
+    margin-top: 22px;
+}
+
+.dashboard-grid .panel {
+    position: relative;
+    overflow: hidden;
+    min-height: 135px;
+    padding: 22px;
+    margin: 0;
+}
+
+.dashboard-grid .panel::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 65px;
+    height: 65px;
+    border-radius: 0 0 0 65px;
+    background: #edf3ff;
+}
+
+.dashboard-grid .panel:nth-child(2)::after {
+    background: #e8f7f0;
+}
+
+.dashboard-grid .panel:nth-child(3)::after {
+    background: #fff4e4;
+}
+
+.dashboard-grid .panel:nth-child(4)::after {
+    background: #f1edff;
+}
+
+.dashboard-grid .panel h3 {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.dashboard-grid .panel strong {
+    display: block;
+    color: var(--navy);
+    font-family: "Manrope", sans-serif;
+    font-size: 26px;
+    font-weight: 800;
+}
 
 /* =========================================================
-   21. RESPONSIVE - TABLETTES
+   6. FORMULAIRES — TOUS LES CHAMPS
 ========================================================= */
 
-@media (max-width: 850px) {
+form {
+    width: 100%;
+}
 
+form label {
+    display: block;
+    margin: 15px 0 7px;
+    color: #43516a;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+form input,
+form select,
+form textarea {
+    display: block;
+    width: 100%;
+    min-height: 47px;
+
+    padding: 11px 14px;
+
+    border: 1px solid #e0e7f0;
+    border-radius: 10px;
+
+    background: #f9fbfe;
+    color: var(--text);
+
+    font-size: 13px;
+
+    transition: border-color .2s, box-shadow .2s, background .2s;
+}
+
+form input:hover,
+form select:hover,
+form textarea:hover {
+    border-color: #c9d5e7;
+}
+
+form input:focus,
+form select:focus,
+form textarea:focus {
+    outline: none;
+    background: white;
+    border-color: var(--blue);
+    box-shadow: 0 0 0 4px rgba(53, 105, 212, .09);
+}
+
+form input::placeholder,
+form textarea::placeholder {
+    color: #a3adbc;
+}
+
+form textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+form input[type="date"],
+form input[type="datetime-local"] {
+    cursor: pointer;
+}
+
+form input[type="number"] {
+    font-variant-numeric: tabular-nums;
+}
+
+form select {
+    cursor: pointer;
+}
+
+form input:disabled,
+form select:disabled,
+form textarea:disabled {
+    background: #edf0f5;
+    color: #8994a5;
+    cursor: not-allowed;
+}
+
+/* =========================================================
+   7. BOUTONS DES FORMULAIRES
+========================================================= */
+
+form button[type="submit"],
+.panel > button,
+.departure-card button {
+    min-height: 44px;
+    margin-top: 19px;
+    padding: 11px 19px;
+
+    border: none;
+    border-radius: 10px;
+
+    background: linear-gradient(135deg, #4279e6, #2859bd);
+    color: white;
+
+    font-size: 12px;
+    font-weight: 800;
+
+    box-shadow: 0 4px 12px rgba(53, 105, 212, .15);
+    transition: .2s ease;
+}
+
+form button[type="submit"]:hover,
+.panel > button:hover,
+.departure-card button:hover {
+    transform: translateY(-2px);
+    background: linear-gradient(135deg, #356bd5, #204da8);
+    box-shadow: 0 7px 17px rgba(53, 105, 212, .22);
+}
+
+form button:disabled {
+    transform: none;
+}
+
+/* =========================================================
+   8. CARTES DE DÉPARTS
+========================================================= */
+
+.departure-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.departure-card {
+    padding: 23px;
+    margin-bottom: 0;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 15px;
+    box-shadow: var(--shadow);
+    transition: .2s ease;
+}
+
+.departure-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-hover);
+}
+
+.departure-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.departure-card-header strong {
+    color: var(--blue);
+    font-size: 16px;
+}
+
+.departure-tag {
+    padding: 5px 10px;
+    border-radius: 30px;
+    background: var(--green-light);
+    color: var(--green);
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.departure-card h3 {
+    font-size: 18px;
+    margin-bottom: 15px;
+}
+
+.departure-details {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+}
+
+.departure-details span {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.departure-card button {
+    width: 100%;
+}
+
+/* =========================================================
+   9. TABLEAUX
+========================================================= */
+
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    border: 1px solid #edf0f5;
+    border-radius: 11px;
+    margin-top: 16px;
+}
+
+table {
+    width: 100%;
+    min-width: 620px;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+thead {
+    background: #f5f7fb;
+}
+
+th {
+    padding: 15px 14px;
+    color: #748198;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--border);
+}
+
+td {
+    padding: 14px;
+    color: var(--text);
+    font-size: 12px;
+    border-bottom: 1px solid #edf0f5;
+    vertical-align: middle;
+}
+
+tbody tr:last-child td {
+    border-bottom: none;
+}
+
+tbody tr:hover {
+    background: #f8faff;
+}
+
+td button {
+    min-height: 32px;
+    padding: 7px 11px;
+    margin: 2px;
+    border: none;
+    border-radius: 7px;
+    background: var(--blue-light);
+    color: var(--blue);
+    font-size: 11px;
+    font-weight: 700;
+    transition: .2s ease;
+}
+
+td button:hover {
+    background: #dce8ff;
+}
+
+td button[data-reject] {
+    background: var(--red-light);
+    color: var(--red);
+}
+
+td button[data-reject]:hover {
+    background: #ffe0e0;
+}
+
+td button[data-approve] {
+    background: var(--green-light);
+    color: var(--green);
+}
+
+td button[data-approve]:hover {
+    background: #d6f1e3;
+}
+
+/* =========================================================
+   10. STATUTS
+========================================================= */
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 10px;
+    border-radius: 30px;
+    font-size: 10px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.status-paid {
+    background: var(--green-light);
+    color: var(--green);
+}
+
+.status-cancelled {
+    background: var(--red-light);
+    color: var(--red);
+}
+
+.status-boarded {
+    background: var(--blue-light);
+    color: var(--blue);
+}
+
+.status-pending {
+    background: var(--orange-light);
+    color: #b9781e;
+}
+
+/* =========================================================
+   11. RÉSERVATION ET PAIEMENT
+========================================================= */
+
+#selectedDepartureInfo {
+    padding: 15px;
+    margin-bottom: 18px;
+    border-left: 4px solid var(--blue);
+    border-radius: 8px;
+    background: #f4f7ff;
+    color: var(--navy);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+#paymentPanel {
+    border-top: 4px solid var(--green);
+}
+
+#paymentPanel h2 {
+    color: var(--green);
+}
+
+#paymentResult {
+    margin-top: 17px;
+    padding: 15px;
+    border-radius: 10px;
+    background: var(--green-light);
+    color: #147a55;
+    font-size: 12px;
+    overflow-wrap: anywhere;
+}
+
+#paymentResult:empty {
+    display: none;
+}
+
+#paymentResult h3 {
+    color: var(--green);
+    margin-bottom: 8px;
+}
+
+/* =========================================================
+   12. CONTRÔLE DES BILLETS
+========================================================= */
+
+#page-control .panel {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 32px;
+}
+
+#controlResult {
+    margin-top: 18px;
+    padding: 16px;
+    border-radius: 10px;
+    font-size: 12px;
+    overflow-wrap: anywhere;
+}
+
+#controlResult:empty {
+    display: none;
+}
+
+#controlResult.success {
+    background: var(--green-light);
+    color: #147a55;
+    border: 1px solid #c8eedb;
+}
+
+#controlResult.error {
+    background: var(--red-light);
+    color: #bd3636;
+    border: 1px solid #ffd5d5;
+}
+
+/* =========================================================
+   13. UTILISATEURS ET AGENCES
+========================================================= */
+
+#agencyRows {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+#agencyRows .panel {
+    margin: 0;
+}
+
+#agencyRows h3 {
+    margin-bottom: 10px;
+}
+
+#agencyRows p {
+    margin-top: 5px;
+    font-size: 12px;
+}
+
+/* =========================================================
+   14. NOTIFICATIONS
+========================================================= */
+
+#toast {
+    position: fixed;
+    right: 25px;
+    bottom: 25px;
+    z-index: 1000;
+
+    max-width: 380px;
+    padding: 14px 20px;
+
+    border-radius: 11px;
+    background: var(--green);
+    color: white;
+
+    font-size: 12px;
+    font-weight: 700;
+
+    box-shadow: 0 8px 25px rgba(0, 0, 0, .15);
+
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(12px);
+
+    transition: .25s ease;
+}
+
+#toast.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+#toast[data-type="error"] {
+    background: var(--red);
+}
+
+/* =========================================================
+   15. ÉTATS VIDES
+========================================================= */
+
+#departureEmpty,
+#ticketEmpty,
+#paymentEmpty,
+#refundEmpty {
+    padding: 18px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+/* =========================================================
+   16. ACCESSIBILITÉ
+========================================================= */
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+    outline: 3px solid rgba(53, 105, 212, .25);
+    outline-offset: 2px;
+}
+
+/* =========================================================
+   17. TABLETTES
+========================================================= */
+
+@media (max-width: 1100px) {
     :root {
-        --sidebar-width: 215px;
-    }
-
-    .sidebar {
-        padding: 18px 12px;
+        --sidebar-width: 225px;
     }
 
     .main-content {
-        padding: 22px 18px;
+        padding: 25px 22px;
     }
 
-    .booking-layout {
-        grid-template-columns: 1fr;
+    .dashboard-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+}
 
+@media (max-width: 800px) {
     .departure-grid {
         grid-template-columns: 1fr;
     }
 
+    .panel {
+        padding: 20px;
+    }
 }
 
-
 /* =========================================================
-   22. RESPONSIVE - TÉLÉPHONES
+   18. TÉLÉPHONES
 ========================================================= */
 
 @media (max-width: 650px) {
-
-    .app-layout {
+    #appSection {
         display: block;
     }
 
     .sidebar {
         position: relative;
         width: 100%;
-        min-width: 0;
         min-height: auto;
-
-        padding: 13px;
-
-        border-radius: 0;
+        padding: 15px;
     }
 
-    .sidebar-brand {
-        padding: 3px 3px 13px;
+    .brand {
+        padding-bottom: 13px;
     }
 
-    .sidebar-user {
-        padding: 12px 3px;
+    .brand h2 {
+        font-size: 21px;
     }
 
-    .sidebar-nav {
+    .user-info {
+        padding: 12px 5px;
+    }
+
+    #mainNav {
         display: flex;
         flex-wrap: wrap;
         gap: 6px;
-
-        padding-top: 12px;
+        padding-top: 13px;
         overflow: visible;
-    }
-
-    .nav-label {
-        width: 100%;
-        margin: 7px 0 3px;
     }
 
     .nav-link {
         width: auto;
-        flex: 1 1 140px;
-
+        flex: 1 1 135px;
+        min-height: 39px;
         margin: 0;
-        padding: 10px;
-
+        padding: 9px;
         font-size: 11px;
     }
 
-    .nav-link span {
-        width: auto;
-    }
-
-    .sidebar-bottom {
+    .logout-btn {
         margin-top: 12px;
-        padding-top: 10px;
     }
 
     .main-content {
@@ -1548,106 +1035,64 @@ td .btn {
     }
 
     .topbar {
-        align-items: flex-start;
-        flex-direction: column;
-        margin-bottom: 23px;
+        min-height: auto;
+        margin-bottom: 22px;
     }
 
     .topbar h1 {
         font-size: 22px;
     }
 
-    .stats-grid {
+    .dashboard-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 10px;
     }
 
-    .stat-card {
-        padding: 13px 10px;
-        gap: 9px;
+    .dashboard-grid .panel {
+        min-height: 115px;
+        padding: 16px 13px;
     }
 
-    .stat-icon {
-        width: 35px;
-        height: 35px;
-        min-width: 35px;
-        font-size: 15px;
-    }
-
-    .stat-card p {
-        font-size: 10px;
-    }
-
-    .stat-card h3 {
-        font-size: 19px;
+    .dashboard-grid .panel strong {
+        font-size: 21px;
     }
 
     .panel {
-        padding: 16px;
+        padding: 17px;
+        border-radius: 12px;
     }
 
-    .welcome-section,
-    .section-heading {
-        align-items: flex-start;
-        flex-direction: column;
+    .panel h2 {
+        font-size: 18px;
     }
 
-    .search-form {
-        grid-template-columns: 1fr;
-    }
-
-    .search-toolbar {
-        align-items: stretch;
-        flex-direction: column;
-    }
-
-    .search-toolbar input,
-    .search-toolbar select {
-        max-width: none;
-    }
-
-    .form-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .control-panel {
-        padding: 22px 15px;
-    }
-
-    .control-form {
-        flex-direction: column;
-    }
-
-    .control-form button {
+    form button[type="submit"] {
         width: 100%;
     }
 
-    #selectedDepartureDetails {
+    #agencyRows {
         grid-template-columns: 1fr;
     }
 
-    .toast {
+    #page-control .panel {
+        padding: 21px 16px;
+    }
+
+    #toast {
         right: 12px;
         left: 12px;
         bottom: 12px;
         max-width: none;
         text-align: center;
     }
-
 }
 
-
-/* =========================================================
-   23. RESPONSIVE - PETITS TÉLÉPHONES
-========================================================= */
-
 @media (max-width: 390px) {
-
     .login-card {
-        padding: 24px 18px;
+        padding: 28px 20px;
     }
 
-    .stats-grid {
+    .dashboard-grid {
         grid-template-columns: 1fr;
     }
 
@@ -1655,36 +1100,20 @@ td .btn {
         flex-basis: 100%;
     }
 
-    .seat-map {
-        grid-template-columns: repeat(4, minmax(30px, 42px));
-        gap: 8px;
-    }
-
     .main-content {
         padding: 16px 10px;
     }
-
 }
-
 
 /* =========================================================
-   24. ACCESSIBILITÉ ET IMPRESSION
+   19. IMPRESSION
 ========================================================= */
 
-button:focus-visible,
-input:focus-visible,
-select:focus-visible {
-    outline: 3px solid rgba(53, 105, 212, 0.25);
-    outline-offset: 2px;
-}
-
-
 @media print {
-
     .sidebar,
     .topbar,
-    .btn,
-    .toast {
+    #toast,
+    button {
         display: none !important;
     }
 
@@ -1693,13 +1122,12 @@ select:focus-visible {
         padding: 0;
     }
 
-    .panel {
-        box-shadow: none;
-        border: 1px solid #ddd;
-    }
-
     body {
         background: white;
     }
 
+    .panel {
+        box-shadow: none;
+        border: 1px solid #ddd;
+    }
 }

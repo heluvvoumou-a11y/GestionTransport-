@@ -75,7 +75,6 @@ class MeView(APIView):
 
 # ==========================================
 # GESTION DES UTILISATEURS
-# RESPONSABLE UNIQUEMENT
 # ==========================================
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -107,7 +106,6 @@ class UserViewSet(viewsets.ModelViewSet):
 
 # ==========================================
 # GESTION DES AGENCES
-# RESPONSABLE UNIQUEMENT
 # ==========================================
 
 class AgencyViewSet(viewsets.ModelViewSet):
@@ -209,10 +207,12 @@ class TripViewSet(viewsets.ModelViewSet):
         return qs
 
     def perform_create(self, serializer):
-        trip = serializer.validated_data
+        data = serializer.validated_data
 
-        start = trip["departure_at"]
-        end = trip.get("arrival_at") or start
+        start = data["departure_at"]
+        end = data.get("arrival_at") or start
+        vehicle = data["vehicle"]
+        driver = data["driver"]
 
         conflicts = Trip.objects.filter(
             status__in=("PLANNED", "BOARDING", "DEPARTED"),
@@ -220,25 +220,99 @@ class TripViewSet(viewsets.ModelViewSet):
             arrival_at__gt=start,
         )
 
-        if conflicts.filter(vehicle=trip["vehicle"]).exists():
+        if conflicts.filter(vehicle=vehicle).exists():
             raise ValidationError({
-                "vehicle": "Ce véhicule est déjà affecté à un départ sur cette période."
+                "vehicle": "Ce véhicule est déjà affecté à un autre départ sur cette période."
             })
 
-        if conflicts.filter(driver=trip["driver"]).exists():
+        if conflicts.filter(driver=driver).exists():
             raise ValidationError({
-                "driver": "Ce chauffeur est déjà affecté à un départ sur cette période."
+                "driver": "Ce chauffeur est déjà affecté à un autre départ sur cette période."
             })
 
-        obj = serializer.save()
+        trip = serializer.save()
 
         Seat.objects.bulk_create(
             [
-                Seat(vehicle=obj.vehicle, number=n)
-                for n in range(1, obj.vehicle.capacity + 1)
+                Seat(vehicle=trip.vehicle, number=number)
+                for number in range(1, trip.vehicle.capacity + 1)
             ],
             ignore_conflicts=True,
         )
+
+    def perform_update(self, serializer):
+        trip = serializer.instance
+        data = serializer.validated_data
+
+        if trip.status != "PLANNED":
+            raise ValidationError({
+                "detail": "Seuls les départs planifiés peuvent être modifiés."
+            })
+
+        protected_fields = (
+            "route",
+            "agency",
+            "vehicle",
+            "driver",
+            "departure_at",
+            "arrival_at",
+            "price",
+        )
+
+        if trip.reservations.exists():
+            for field in protected_fields:
+                if field in data:
+                    new_value = data[field]
+                    old_value = getattr(trip, field)
+
+                    if new_value != old_value:
+                        raise ValidationError({
+                            field: (
+                                "Impossible de modifier ce champ : "
+                                "ce départ possède déjà des réservations."
+                            )
+                        })
+
+        start = data.get("departure_at", trip.departure_at)
+        end = data.get("arrival_at", trip.arrival_at) or start
+
+        vehicle = data.get("vehicle", trip.vehicle)
+        driver = data.get("driver", trip.driver)
+
+        conflicts = Trip.objects.filter(
+            status__in=("PLANNED", "BOARDING", "DEPARTED"),
+            departure_at__lt=end,
+            arrival_at__gt=start,
+        ).exclude(pk=trip.pk)
+
+        if conflicts.filter(vehicle=vehicle).exists():
+            raise ValidationError({
+                "vehicle": "Ce véhicule est déjà affecté à un autre départ sur cette période."
+            })
+
+        if conflicts.filter(driver=driver).exists():
+            raise ValidationError({
+                "driver": "Ce chauffeur est déjà affecté à un autre départ sur cette période."
+            })
+
+        old_vehicle_id = trip.vehicle_id
+
+        updated_trip = serializer.save()
+
+        if updated_trip.vehicle_id != old_vehicle_id:
+            Seat.objects.bulk_create(
+                [
+                    Seat(
+                        vehicle=updated_trip.vehicle,
+                        number=number
+                    )
+                    for number in range(
+                        1,
+                        updated_trip.vehicle.capacity + 1
+                    )
+                ],
+                ignore_conflicts=True,
+            )
 
 
 # ==========================================
@@ -402,7 +476,6 @@ class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
 
 # ==========================================
 # GESTION DES REMBOURSEMENTS
-# CAISSIER ET RESPONSABLE
 # ==========================================
 
 class RefundViewSet(viewsets.ModelViewSet):
