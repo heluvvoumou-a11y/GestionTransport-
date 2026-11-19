@@ -6,15 +6,18 @@ from django.shortcuts import render, redirect, get_object_or_404
 from .models import (
     Trip, Reservation, Payment, Ticket, Luggage
 )
+
 from .forms import (
-    ReservationForm, PaymentForm, TicketCheckForm,
-    RefundForm, TripForm
+    ReservationForm,
+    PaymentForm,
+    TicketCheckForm,
+    TripForm,
 )
+
 from .services import (
     create_reservation,
     confirm_payment,
     cancel_reservation,
-    request_refund,
     check_ticket,
     BusinessError,
 )
@@ -34,6 +37,7 @@ def dashboard(request):
             "route", "vehicle"
         ).order_by("departure_at")[:8],
     }
+
     return render(request, "operations/dashboard.html", context)
 
 
@@ -133,7 +137,11 @@ def reservation_list(request):
         "trip", "trip__route", "seat"
     ).order_by("-created_at")
 
-    return render(request, "operations/reservations.html", {"items": items})
+    return render(
+        request,
+        "operations/reservations.html",
+        {"items": items},
+    )
 
 
 @login_required
@@ -199,6 +207,7 @@ def cancel_view(request, pk):
                 reservation_id=reservation.id,
                 user=request.user,
             )
+
             messages.success(request, "Réservation annulée.")
 
         except BusinessError as e:
@@ -208,48 +217,18 @@ def cancel_view(request, pk):
 
 
 @login_required
-def refund_view(request, pk):
-    reservation = get_object_or_404(Reservation, pk=pk)
-    form = RefundForm(request.POST or None)
-
-    if request.method == "POST" and form.is_valid():
-        try:
-            request_refund(
-                reservation_id=reservation.id,
-                amount=form.cleaned_data["amount"],
-                reason=form.cleaned_data["reason"],
-                user=request.user,
-            )
-
-            messages.success(
-                request,
-                "Demande de remboursement envoyée. Elle est en attente de validation par le responsable."
-            )
-
-            return redirect("reservation_detail", pk=pk)
-
-        except BusinessError as e:
-            messages.error(request, str(e))
-
-    return render(
-        request,
-        "operations/form.html",
-        {
-            "form": form,
-            "title": f"Demander un remboursement pour la réservation #{pk}",
-        },
-    )
-
-
-@login_required
 def ticket_list(request):
     tickets = Ticket.objects.select_related(
         "reservation",
         "reservation__trip",
-        "reservation_trip_route",
+        "reservation__trip__route",
     ).order_by("-issued_at")
 
-    return render(request, "operations/tickets.html", {"tickets": tickets})
+    return render(
+        request,
+        "operations/tickets.html",
+        {"tickets": tickets},
+    )
 
 
 @login_required
@@ -290,4 +269,8 @@ def luggage_list(request):
         "reservation", "reservation__trip"
     ).order_by("-created_at")
 
-    return render(request, "operations/luggage.html", {"items": items})
+    return render(
+        request,
+        "operations/luggage.html",
+        {"items": items},
+    )

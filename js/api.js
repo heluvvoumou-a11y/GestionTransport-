@@ -1,6 +1,5 @@
 /* =========================================================
    TRANSITGO - API DJANGO
-   Communication entre le frontend et Django REST Framework
 ========================================================= */
 
 const API_BASE_URL = "http://127.0.0.1:8000/api/";
@@ -10,41 +9,46 @@ const TransitAPI = {
     refreshToken: sessionStorage.getItem("transitgo_refresh"),
     currentUser: null,
 
-    // Vérifier si une session existe
     isAuthenticated() {
         return Boolean(this.accessToken);
     },
 
-    // Lire la réponse du serveur
     async parseResponse(response) {
         if (response.status === 204) return null;
 
-        const type = response.headers.get("content-type") || "";
+        const contentType = response.headers.get("content-type") || "";
 
-        if (type.includes("application/json")) {
-            return response.json();
+        if (contentType.includes("application/json")) {
+            return await response.json();
         }
 
         const text = await response.text();
         return text ? { detail: text } : {};
     },
 
-    // Formater les erreurs Django
     formatError(data) {
         if (!data) return "Une erreur est survenue.";
-
         if (typeof data === "string") return data;
 
-        if (data.detail) return data.detail;
+        if (data.detail) {
+            return typeof data.detail === "string"
+                ? data.detail
+                : JSON.stringify(data.detail);
+        }
 
         return Object.entries(data)
-            .map(([key, value]) =>
-                `${key} : ${Array.isArray(value) ? value.join(" ") : String(value)}`
-            )
+            .map(([key, value]) => {
+                const message = Array.isArray(value)
+                    ? value.join(" ")
+                    : typeof value === "object" && value !== null
+                        ? JSON.stringify(value)
+                        : String(value);
+
+                return `${key} : ${message}`;
+            })
             .join("\n") || "Une erreur est survenue.";
     },
 
-    // Connexion
     async login(username, password) {
         let response;
 
@@ -56,7 +60,7 @@ const TransitAPI = {
                 },
                 body: JSON.stringify({
                     username: username.trim(),
-                    password: password
+                    password
                 })
             });
         } catch {
@@ -69,6 +73,12 @@ const TransitAPI = {
 
         if (!response.ok) {
             throw new Error(this.formatError(data));
+        }
+
+        if (!data.access || !data.refresh) {
+            throw new Error(
+                "Le serveur n'a pas retourné les jetons de connexion attendus."
+            );
         }
 
         this.accessToken = data.access;
@@ -86,20 +96,22 @@ const TransitAPI = {
         }
     },
 
-    // Renouveler le jeton
     async refreshAccessToken() {
         if (!this.refreshToken) return false;
 
         try {
-            const response = await fetch(`${API_BASE_URL}token/refresh/`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    refresh: this.refreshToken
-                })
-            });
+            const response = await fetch(
+                `${API_BASE_URL}token/refresh/`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        refresh: this.refreshToken
+                    })
+                }
+            );
 
             const data = await this.parseResponse(response);
 
@@ -109,11 +121,19 @@ const TransitAPI = {
             }
 
             this.accessToken = data.access;
-            sessionStorage.setItem("transitgo_access", data.access);
+
+            sessionStorage.setItem(
+                "transitgo_access",
+                data.access
+            );
 
             if (data.refresh) {
                 this.refreshToken = data.refresh;
-                sessionStorage.setItem("transitgo_refresh", data.refresh);
+
+                sessionStorage.setItem(
+                    "transitgo_refresh",
+                    data.refresh
+                );
             }
 
             return true;
@@ -124,11 +144,16 @@ const TransitAPI = {
         }
     },
 
-    // Requête générale vers Django
     async request(endpoint, options = {}, retry = true) {
-        const headers = { ...(options.headers || {}) };
+        const headers = {
+            ...(options.headers || {})
+        };
 
-        if (!(options.body instanceof FormData)) {
+        const isFormData =
+            typeof FormData !== "undefined"
+            && options.body instanceof FormData;
+
+        if (!isFormData && options.body !== undefined) {
             headers["Content-Type"] = "application/json";
         }
 
@@ -139,27 +164,34 @@ const TransitAPI = {
         let response;
 
         try {
-            response = await fetch(`${API_BASE_URL}${endpoint}`, {
-                ...options,
-                headers
-            });
+            response = await fetch(
+                `${API_BASE_URL}${endpoint}`,
+                {
+                    ...options,
+                    headers
+                }
+            );
         } catch {
             throw new Error(
-                "Connexion au serveur impossible. Vérifie Django et ta connexion."
+                "Connexion au serveur impossible. Vérifie que Django est démarré et que l'adresse API est correcte."
             );
         }
 
         if (
-            response.status === 401 &&
-            retry &&
-            this.refreshToken &&
-            !endpoint.startsWith("token/")
+            response.status === 401
+            && retry
+            && this.refreshToken
+            && !endpoint.startsWith("token/")
         ) {
-            if (await this.refreshAccessToken()) {
+            const refreshed = await this.refreshAccessToken();
+
+            if (refreshed) {
                 return this.request(endpoint, options, false);
             }
 
-            throw new Error("Session expirée. Reconnecte-toi.");
+            throw new Error(
+                "Session expirée. Veuillez vous reconnecter."
+            );
         }
 
         const data = await this.parseResponse(response);
@@ -171,14 +203,12 @@ const TransitAPI = {
         return data;
     },
 
-    // GET
     get(endpoint) {
         return this.request(endpoint, {
             method: "GET"
         });
     },
 
-    // POST
     post(endpoint, body = {}) {
         return this.request(endpoint, {
             method: "POST",
@@ -186,7 +216,6 @@ const TransitAPI = {
         });
     },
 
-    // PATCH
     patch(endpoint, body = {}) {
         return this.request(endpoint, {
             method: "PATCH",
@@ -194,49 +223,49 @@ const TransitAPI = {
         });
     },
 
-    // DELETE
     delete(endpoint) {
         return this.request(endpoint, {
             method: "DELETE"
         });
     },
 
-    // Informations de l'utilisateur connecté
     async getCurrentUser() {
         const user = await this.get("me/");
         this.currentUser = user;
         return user;
     },
 
-    // Récupérer toutes les pages d'une liste Django
     async getAll(endpoint) {
         let result = await this.get(endpoint);
-        let items = [];
+        const items = [];
 
         while (result) {
             if (Array.isArray(result)) {
-                items = items.concat(result);
+                items.push(...result);
                 break;
             }
 
             if (Array.isArray(result.results)) {
-                items = items.concat(result.results);
+                items.push(...result.results);
 
                 if (!result.next) break;
 
                 const nextUrl = new URL(result.next);
                 const currentBase = new URL(API_BASE_URL);
 
-                if (nextUrl.origin !== currentBase.origin ||
-                    !nextUrl.pathname.startsWith(currentBase.pathname)) {
+                if (
+                    nextUrl.origin !== currentBase.origin
+                    || !nextUrl.pathname.startsWith(currentBase.pathname)
+                ) {
                     break;
                 }
 
-                const relative =
-                    nextUrl.pathname.substring(currentBase.pathname.length) +
-                    nextUrl.search;
+                const relativeEndpoint =
+                    nextUrl.pathname.substring(
+                        currentBase.pathname.length
+                    ) + nextUrl.search;
 
-                result = await this.get(relative);
+                result = await this.get(relativeEndpoint);
 
             } else {
                 break;
@@ -246,7 +275,6 @@ const TransitAPI = {
         return items;
     },
 
-    // Déconnexion
     logout() {
         this.accessToken = null;
         this.refreshToken = null;
@@ -257,6 +285,5 @@ const TransitAPI = {
     }
 };
 
-// Compatibilité avec les deux noms utilisés par les fichiers
 window.TransitAPI = TransitAPI;
 window.API = TransitAPI;

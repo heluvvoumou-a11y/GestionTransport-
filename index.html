@@ -3,347 +3,711 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="TransitGo - Gestion de transport de voyageurs">
-    <title>TransitGo | Transport de voyageurs</title>
+    <meta name="theme-color" content="#142b55">
+    <title>TransitGo - Gestion du transport</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-<section id="loginSection" class="login-container">
-    <div class="login-card">
-        <h1>TransitGo</h1>
-        <p>Gestion de transport de voyageurs</p>
-        <form id="loginForm">
-            <label for="username">Nom d'utilisateur</label>
-            <input id="username" type="text" required autocomplete="username" placeholder="Votre nom d'utilisateur">
-            <label for="password">Mot de passe</label>
-            <input id="password" type="password" required autocomplete="current-password" placeholder="Votre mot de passe">
-            <button type="submit">Se connecter</button>
-            <p id="loginError" role="alert"></p>
-        </form>
-    </div>
-</section>
+    <!-- CONNEXION -->
+    <section id="loginSection" class="login-section">
+        <div class="login-container">
+            <div class="login-card">
+                <h1>TransitGo</h1>
+                <p>Plateforme de gestion du transport voyageurs</p>
 
-<div id="appSection" class="app-container" hidden>
-    <aside class="sidebar">
-        <div class="brand"><h2>TransitGo</h2></div>
-        <div class="user-info">
-            <strong id="userName">Utilisateur</strong>
-            <span id="userRole">Rôle</span>
+                <form id="loginForm">
+                    <label for="username">Nom d'utilisateur</label>
+                    <input id="username" type="text"
+                        placeholder="Votre nom d'utilisateur"
+                        required autocomplete="username">
+
+                    <label for="password">Mot de passe</label>
+                    <input id="password" type="password"
+                        placeholder="Votre mot de passe"
+                        required autocomplete="current-password">
+
+                    <button type="submit">Se connecter</button>
+                    <p id="loginError" class="error-message"></p>
+                </form>
+            </div>
         </div>
+    </section>
 
-        <nav id="mainNav">
-            <button class="nav-link" data-page="dashboard">Tableau de bord</button>
-            <button class="nav-link" data-page="departures" data-roles="AGENT,EXPLOITATION,RESPONSABLE">Départs</button>
-            <button class="nav-link" data-page="booking" data-roles="AGENT">Réservation</button>
-            <button class="nav-link" data-page="tickets" data-roles="AGENT,EXPLOITATION,CONTROLEUR,RESPONSABLE">Billets</button>
-            <button class="nav-link" data-page="control" data-roles="CONTROLEUR,RESPONSABLE">Contrôle des billets</button>
-            <button class="nav-link" data-page="payments" data-roles="CAISSIER,RESPONSABLE">Paiements</button>
-            <button class="nav-link" data-page="refunds" data-roles="CAISSIER,RESPONSABLE">Remboursements</button>
-            <button class="nav-link" data-page="resources" data-roles="EXPLOITATION,RESPONSABLE">Ressources</button>
-            <button class="nav-link" data-page="users" data-roles="RESPONSABLE">Utilisateurs</button>
-            <button class="nav-link" data-page="agencies" data-roles="RESPONSABLE">Agences</button>
-        </nav>
-        <button id="logoutBtn" class="logout-btn">Déconnexion</button>
-    </aside>
+    <!-- APPLICATION -->
+    <section id="appSection" hidden>
+        <div class="app-container">
 
-    <main class="main-content">
-        <header class="topbar"><h1 id="pageTitle">Tableau de bord</h1></header>
-        <div id="toast" role="status" aria-live="polite"></div>
+            <aside class="sidebar">
+                <div class="brand">
+                    <h2>TransitGo</h2>
+                </div>
 
-        <section id="page-dashboard" class="page">
-            <div class="panel">
-                <h2>Bienvenue sur TransitGo</h2>
-                <p id="dashboardWelcome">Votre espace de gestion du transport.</p>
-            </div>
-            <div class="dashboard-grid">
-                <div class="panel"><h3>Départs</h3><strong id="statDepartures">0</strong></div>
-                <div class="panel"><h3>Réservations</h3><strong id="statReservations">0</strong></div>
-                <div class="panel"><h3>Billets émis</h3><strong id="statTickets">0</strong></div>
-                <div class="panel"><h3>Paiements</h3><strong id="statPaid">0 FCFA</strong></div>
-            </div>
-        </section>
+                <div class="user-info">
+                    <strong id="userName"></strong>
+                    <span id="userRole"></span>
+                </div>
 
-        <section id="page-departures" class="page" hidden>
-            <div class="panel">
-                <h2>Départs disponibles</h2>
-                <form id="departureSearchForm">
-                    <label for="searchFrom">Départ</label>
-                    <input id="searchFrom" placeholder="Ville de départ">
-                    <label for="searchTo">Destination</label>
-                    <input id="searchTo" placeholder="Destination">
-                    <label for="searchDate">Date</label>
-                    <input id="searchDate" type="date">
-                    <button type="submit">Rechercher</button>
-                </form>
-            </div>
-            <div id="departureResults" class="departure-grid"></div>
-            <p id="departureEmpty"></p>
-        </section>
+                <nav id="mainNav">
+                    <button type="button" class="nav-link active"
+                        data-page="dashboard"
+                        data-roles="AGENT,CONTROLEUR,CAISSIER,EXPLOITATION,RESPONSABLE">
+                        Tableau de bord
+                    </button>
 
-        <section id="page-booking" class="page" hidden>
+                    <button type="button" class="nav-link"
+                        data-page="departures"
+                        data-roles="AGENT,EXPLOITATION,RESPONSABLE">
+                        Départs
+                    </button>
 
-            <!-- LISTE DES RÉSERVATIONS -->
-            <div class="panel">
-                <div class="reservation-list-header">
+                    <button type="button" class="nav-link"
+                        data-page="booking"
+                        data-roles="AGENT">
+                        Réservation
+                    </button>
+
+                    <button type="button" class="nav-link"
+                        data-page="tickets"
+                        data-roles="AGENT,CONTROLEUR,RESPONSABLE">
+                        Billets
+                    </button>
+
+                    <!-- Contrôle réservé au Contrôleur -->
+                    <button type="button" class="nav-link"
+                        data-page="control"
+                        data-roles="CONTROLEUR">
+                        Contrôle des billets
+                    </button>
+
+                    <!-- Historique accessible au Caissier et au Responsable -->
+                    <button type="button" class="nav-link"
+                        data-page="payments"
+                        data-roles="CAISSIER,RESPONSABLE">
+                        Paiements et recettes
+                    </button>
+
+                    <button type="button" class="nav-link"
+                        data-page="resources"
+                        data-roles="EXPLOITATION,RESPONSABLE">
+                        Ressources
+                    </button>
+
+                    <button type="button" class="nav-link"
+                        data-page="users"
+                        data-roles="RESPONSABLE">
+                        Utilisateurs
+                    </button>
+
+                    <button type="button" class="nav-link"
+                        data-page="agencies"
+                        data-roles="RESPONSABLE">
+                        Agences
+                    </button>
+                </nav>
+
+                <button id="logoutBtn" type="button" class="logout-btn">
+                    Déconnexion
+                </button>
+            </aside>
+
+            <main class="main-content">
+
+                <header class="topbar">
                     <div>
-                        <h2>Réservations enregistrées</h2>
-                        <p>Consulte les réservations effectuées par les agents.</p>
+                        <h1 id="pageTitle">Tableau de bord</h1>
+                        <p>Gestion du transport voyageurs</p>
                     </div>
-                    <button id="refreshReservationsBtn" type="button">Actualiser</button>
-                </div>
+                </header>
 
-                <div class="table-responsive">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>N°</th>
-                                <th>Voyageur</th>
-                                <th>Téléphone</th>
-                                <th>Trajet</th>
-                                <th>Départ</th>
-                                <th>Place</th>
-                                <th>Montant</th>
-                                <th>Statut</th>
-                            </tr>
-                        </thead>
-                        <tbody id="reservationRows"></tbody>
-                    </table>
-                </div>
-                <p id="reservationEmpty">Chargement des réservations...</p>
-            </div>
+                <!-- TABLEAU DE BORD -->
+                <section id="page-dashboard" class="page active">
+                    <div class="panel">
+                        <h2 id="dashboardWelcome">Bienvenue sur TransitGo</h2>
+                        <p>Voici un aperçu de votre activité.</p>
+                    </div>
 
-            <!-- NOUVELLE RÉSERVATION -->
-            <div class="panel">
-                <h2>Nouvelle réservation</h2>
-                <p id="selectedDepartureInfo">Sélectionne un départ dans la liste.</p>
+                    <div class="dashboard-grid">
+                        <article class="panel">
+                            <h3>Départs</h3>
+                            <strong id="statDepartures">0</strong>
+                        </article>
 
-                <form id="bookingForm">
-                    <input id="bookingTripId" type="hidden">
+                        <article class="panel">
+                            <h3>Réservations</h3>
+                            <strong id="statReservations">0</strong>
+                        </article>
 
-                    <label for="bookingTripSelect">Choisir un départ</label>
-                    <select id="bookingTripSelect" required>
-                        <option value="">Chargement des départs...</option>
-                    </select>
+                        <article class="panel">
+                            <h3>Billets générés</h3>
+                            <strong id="statTickets">0</strong>
+                        </article>
 
-                    <label for="bookingSeat">Place disponible</label>
-                    <select id="bookingSeat" required>
-                        <option value="">Choisir une place</option>
-                    </select>
+                        <article class="panel">
+                            <h3>Recettes encaissées</h3>
+                            <strong id="statPaid">0 FCFA</strong>
+                        </article>
+                    </div>
+                </section>
 
-                    <label for="passengerName">Nom du voyageur</label>
-                    <input id="passengerName" required>
+                <!-- DÉPARTS -->
+                <section id="page-departures" class="page" hidden>
 
-                    <label for="passengerPhone">Téléphone</label>
-                    <input id="passengerPhone" type="tel" required>
+                    <!-- Recherche réservée à l'Agent -->
+                    <div id="departureSearchPanel" class="panel">
+                        <h2>Rechercher un départ</h2>
 
-                    <label for="passengerDocument">Pièce d'identité (facultatif)</label>
-                    <input id="passengerDocument">
+                        <form id="departureSearchForm" class="form-grid">
+                            <div>
+                                <label for="searchFrom">Ville de départ</label>
+                                <input id="searchFrom" type="text">
+                            </div>
 
-                    <button type="submit">Créer la réservation</button>
-                </form>
-            </div>
+                            <div>
+                                <label for="searchTo">Destination</label>
+                                <input id="searchTo" type="text">
+                            </div>
 
-            <div id="paymentPanel" class="panel" hidden>
-                <h2>Paiement de la réservation</h2>
-                <p id="paymentReservationInfo"></p>
-                <form id="paymentForm">
-                    <input id="paymentReservationId" type="hidden">
-                    <label for="paymentAmount">Montant à payer (FCFA)</label>
-                    <input id="paymentAmount" type="number" min="1" required>
-                    <label for="paymentMethod">Mode de paiement</label>
-                    <select id="paymentMethod" required>
-                        <option value="MOBILE">Orange Money / Moov Money (simulation)</option>
-                        <option value="CASH">Espèces</option>
-                        <option value="CARD">Carte (simulation)</option>
-                    </select>
-                    <button type="submit">Simuler le paiement</button>
-                </form>
-                <div id="paymentResult"></div>
-            </div>
-        </section>
+                            <div>
+                                <label for="searchDate">Date</label>
+                                <input id="searchDate" type="date">
+                            </div>
 
-        <section id="page-tickets" class="page" hidden>
-            <div class="panel">
-                <h2>Billets enregistrés</h2>
-                <button id="refreshTicketsBtn" type="button">Actualiser</button>
-                <div class="table-responsive">
-                    <table>
-                        <thead>
-                            <tr><th>Code</th><th>Réservation</th><th>Date d'émission</th><th>Contrôlé</th></tr>
-                        </thead>
-                        <tbody id="ticketRows"></tbody>
-                    </table>
-                </div>
-                <p id="ticketEmpty"></p>
-            </div>
-        </section>
+                            <button type="submit">Rechercher</button>
+                        </form>
+                    </div>
 
-        <section id="page-control" class="page" hidden>
-            <div class="panel">
-                <h2>Contrôle d'un billet</h2>
-                <form id="controlForm">
-                    <label for="controlReference">Code UUID du billet</label>
-                    <input id="controlReference" required placeholder="Coller le code du billet">
-                    <button type="submit">Vérifier et enregistrer l'embarquement</button>
-                </form>
-                <div id="controlResult"></div>
-            </div>
-        </section>
+                    <!-- Liste des départs pour Exploitation et Responsable -->
+                    <div id="operationsDeparturePanel" class="panel" hidden>
+                        <div class="section-header">
+                            <div>
+                                <h2>Départs programmés</h2>
+                                <p id="departureManagementDescription">
+                                    Consulter les voyages organisés.
+                                </p>
+                            </div>
 
-        <section id="page-payments" class="page" hidden>
-            <div class="panel">
-                <h2>Historique des paiements</h2>
-                <button id="refreshPaymentsBtn" type="button">Actualiser</button>
-                <div class="table-responsive">
-                    <table>
-                        <thead>
-                            <tr><th>Référence</th><th>Réservation</th><th>Montant</th><th>Méthode</th><th>Date</th></tr>
-                        </thead>
-                        <tbody id="paymentRows"></tbody>
-                    </table>
-                </div>
-                <p id="paymentEmpty"></p>
-            </div>
-        </section>
+                            <button id="refreshDeparturesBtn" type="button">
+                                Actualiser
+                            </button>
+                        </div>
 
-        <section id="page-refunds" class="page" hidden>
-            <div class="panel">
-                <h2>Demander un remboursement</h2>
-                <form id="refundForm">
-                    <label for="refundReservation">Numéro de réservation</label>
-                    <input id="refundReservation" type="number" min="1" required>
-                    <label for="refundAmount">Montant (FCFA)</label>
-                    <input id="refundAmount" type="number" min="1" required>
-                    <label for="refundReason">Motif</label>
-                    <textarea id="refundReason" required></textarea>
-                    <button type="submit">Soumettre la demande</button>
-                </form>
-            </div>
-            <div class="panel">
-                <h2>Demandes de remboursement</h2>
-                <div class="table-responsive">
-                    <table>
-                        <thead>
-                            <tr><th>Demande</th><th>Réservation</th><th>Montant</th><th>Motif</th><th>Statut</th><th>Actions</th></tr>
-                        </thead>
-                        <tbody id="refundRows"></tbody>
-                    </table>
-                </div>
-                <p id="refundEmpty"></p>
-            </div>
-        </section>
+                        <div id="operationsDepartureList"
+                            class="table-responsive"></div>
+                    </div>
 
-        <section id="page-resources" class="page" hidden>
-            <div class="panel">
-                <h2>Créer un itinéraire</h2>
-                <form id="routeForm">
-                    <input id="routeOrigin" placeholder="Ville de départ" required>
-                    <input id="routeDestination" placeholder="Destination" required>
-                    <input id="routeDistance" type="number" min="0" placeholder="Distance en km">
-                    <input id="routeDuration" type="number" min="0" placeholder="Durée estimée en minutes">
-                    <button type="submit">Ajouter l'itinéraire</button>
-                </form>
-            </div>
-            <div class="panel">
-                <h2>Ajouter un chauffeur</h2>
-                <form id="driverForm">
-                    <input id="driverFirstName" placeholder="Prénom" required>
-                    <input id="driverLastName" placeholder="Nom" required>
-                    <input id="driverPhone" placeholder="Téléphone">
-                    <input id="driverLicense" placeholder="Numéro de permis" required>
-                    <button type="submit">Ajouter le chauffeur</button>
-                </form>
-            </div>
-            <div class="panel">
-                <h2>Ajouter un véhicule</h2>
-                <form id="vehicleForm">
-                    <input id="vehicleRegistration" placeholder="Immatriculation" required>
-                    <input id="vehicleBrand" placeholder="Marque">
-                    <input id="vehicleModel" placeholder="Modèle">
-                    <input id="vehicleCapacity" type="number" min="1" placeholder="Nombre de places" required>
-                    <button type="submit">Ajouter le véhicule</button>
-                </form>
-            </div>
-            <div class="panel">
-                <h2>Programmer un départ</h2>
-                <form id="tripForm">
-                    <label for="tripRoute">Itinéraire</label>
-                    <select id="tripRoute" required></select>
-                    <label for="tripAgency">Agence</label>
-                    <select id="tripAgency" required></select>
-                    <label for="tripVehicle">Véhicule</label>
-                    <select id="tripVehicle" required></select>
-                    <label for="tripDriver">Chauffeur</label>
-                    <select id="tripDriver" required></select>
-                    <label for="tripDeparture">Date et heure de départ</label>
-                    <input id="tripDeparture" type="datetime-local" required>
-                    <label for="tripArrival">Date et heure d'arrivée</label>
-                    <input id="tripArrival" type="datetime-local">
-                    <label for="tripPrice">Prix (FCFA)</label>
-                    <input id="tripPrice" type="number" min="0" required>
-                    <label for="tripNotes">Notes</label>
-                    <textarea id="tripNotes"></textarea>
-                    <button type="submit">Créer le départ</button>
-                </form>
-            </div>
-        </section>
+                    <!-- Résultats de recherche Agent -->
+                    <div id="departureResults" class="departure-grid"></div>
+                    <p id="departureEmpty" class="empty-state"></p>
+                </section>
 
-        <section id="page-users" class="page" hidden>
-            <div class="panel">
-                <h2>Créer un utilisateur</h2>
-                <form id="userForm">
-                    <input id="newUsername" placeholder="Nom d'utilisateur" required>
-                    <input id="newFirstName" placeholder="Prénom">
-                    <input id="newLastName" placeholder="Nom">
-                    <input id="newEmail" type="email" placeholder="Adresse e-mail">
-                    <input id="newPassword" type="password" minlength="8" placeholder="Mot de passe (8 caractères minimum)" required>
-                    <label for="newRole">Rôle</label>
-                    <select id="newRole" required>
-                        <option value="AGENT">Agent</option>
-                        <option value="CONTROLEUR">Contrôleur</option>
-                        <option value="CAISSIER">Caissier</option>
-                        <option value="EXPLOITATION">Exploitation</option>
-                        <option value="RESPONSABLE">Responsable</option>
-                    </select>
-                    <label for="newAgency">Agence</label>
-                    <select id="newAgency"><option value="">Aucune agence</option></select>
-                    <button type="submit">Créer l'utilisateur</button>
-                </form>
-            </div>
-            <div class="panel">
-                <h2>Utilisateurs</h2>
-                <div class="table-responsive">
-                    <table>
-                        <thead>
-                            <tr><th>Identifiant</th><th>Nom</th><th>Rôle</th><th>Actif</th><th>Actions</th></tr>
-                        </thead>
-                        <tbody id="userRows"></tbody>
-                    </table>
-                </div>
-            </div>
-        </section>
+                <!-- RÉSERVATION AGENT -->
+                <section id="page-booking" class="page" hidden>
+                    <div class="panel">
+                        <h2>Créer une réservation</h2>
 
-        <section id="page-agencies" class="page" hidden>
-            <div class="panel">
-                <h2>Créer une agence</h2>
-                <form id="agencyForm">
-                    <input id="agencyName" placeholder="Nom de l'agence" required>
-                    <input id="agencyCity" placeholder="Ville" required>
-                    <input id="agencyAddress" placeholder="Adresse">
-                    <input id="agencyPhone" placeholder="Téléphone">
-                    <button type="submit">Ajouter l'agence</button>
-                </form>
-            </div>
-            <div class="panel">
-                <h2>Agences enregistrées</h2>
-                <div id="agencyRows"></div>
-            </div>
-        </section>
-    </main>
-</div>
+                        <p id="selectedDepartureInfo">
+                            Sélectionne un départ dans la liste.
+                        </p>
 
-<script src="js/api.js"></script>
-<script src="js/app.js"></script>
+                        <form id="bookingForm" class="form-grid">
+                            <div>
+                                <label for="bookingTripSelect">Départ</label>
+                                <select id="bookingTripSelect" required>
+                                    <option value="">Choisir un départ</option>
+                                </select>
+                            </div>
+
+                            <input id="bookingTripId" type="hidden">
+
+                            <div>
+                                <label for="bookingSeat">Place</label>
+                                <select id="bookingSeat" required>
+                                    <option value="">Choisir une place</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="passengerName">Nom du voyageur</label>
+                                <input id="passengerName" type="text" required>
+                            </div>
+
+                            <div>
+                                <label for="passengerPhone">Téléphone</label>
+                                <input id="passengerPhone" type="tel" required>
+                            </div>
+
+                            <div>
+                                <label for="passengerDocument">Document</label>
+                                <input id="passengerDocument" type="text">
+                            </div>
+
+                            <button type="submit">Enregistrer la réservation</button>
+                        </form>
+
+                        <p class="info-message">
+                            Le paiement sera effectué auprès du caissier.
+                            Aucun billet n'est généré à cette étape.
+                        </p>
+                    </div>
+
+                    <div class="panel">
+                        <div class="section-header">
+                            <h2>Mes réservations</h2>
+                            <button id="refreshReservationsBtn" type="button">
+                                Actualiser
+                            </button>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>N°</th>
+                                        <th>Voyageur</th>
+                                        <th>Téléphone</th>
+                                        <th>Trajet</th>
+                                        <th>Départ</th>
+                                        <th>Place</th>
+                                        <th>Montant</th>
+                                        <th>Statut</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="reservationRows"></tbody>
+                            </table>
+                        </div>
+
+                        <p id="reservationEmpty" class="empty-state"></p>
+                    </div>
+                </section>
+
+                <!-- BILLETS -->
+                <section id="page-tickets" class="page" hidden>
+                    <div class="panel">
+                        <div class="section-header">
+                            <div>
+                                <h2>Billets générés</h2>
+                                <p>Consulter les billets émis après paiement.</p>
+                            </div>
+
+                            <button id="refreshTicketsBtn" type="button">
+                                Actualiser
+                            </button>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="tickets-table">
+                                <thead>
+                                    <tr>
+                                        <th>Code du billet</th>
+                                        <th>Voyageur</th>
+                                        <th>Téléphone</th>
+                                        <th>Trajet</th>
+                                        <th>Date du départ</th>
+                                        <th>Place</th>
+                                        <th>Date d'émission</th>
+                                        <th>Contrôle</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ticketRows"></tbody>
+                            </table>
+                        </div>
+
+                        <p id="ticketEmpty" class="empty-state"></p>
+                    </div>
+                </section>
+
+                <!-- CONTRÔLE DES BILLETS : CONTRÔLEUR UNIQUEMENT -->
+                <section id="page-control" class="page" hidden>
+                    <div class="panel">
+                        <h2>Contrôler un billet</h2>
+
+                        <p>
+                            Saisis le code du billet pour vérifier sa validité
+                            et enregistrer l'embarquement.
+                        </p>
+
+                        <form id="controlForm">
+                            <label for="controlReference">Code du billet</label>
+                            <input id="controlReference" type="text"
+                                required placeholder="Exemple : TG-1001">
+
+                            <button type="submit">Vérifier le billet</button>
+                        </form>
+
+                        <div id="controlResult"></div>
+                    </div>
+                </section>
+
+                <!-- PAIEMENTS -->
+                <section id="page-payments" class="page" hidden>
+
+                    <!-- Zone d'encaissement : CAISSIER UNIQUEMENT -->
+                    <div id="cashierUnpaidPanel" class="panel">
+                        <div class="section-header">
+                            <h2>Réservations à encaisser</h2>
+
+                            <button id="refreshUnpaidBtn" type="button">
+                                Actualiser
+                            </button>
+                        </div>
+
+                        <p class="info-message">
+                            Sélectionne une réservation en attente et encaisse
+                            son montant total. Le billet sera généré après
+                            confirmation du paiement.
+                        </p>
+
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>N° réservation</th>
+                                        <th>Voyageur</th>
+                                        <th>Téléphone</th>
+                                        <th>Trajet</th>
+                                        <th>Départ</th>
+                                        <th>Place</th>
+                                        <th>Montant total</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="unpaidReservationRows"></tbody>
+                            </table>
+                        </div>
+
+                        <p id="unpaidReservationEmpty" class="empty-state"></p>
+                    </div>
+
+                    <!-- Formulaire d'encaissement : CAISSIER UNIQUEMENT -->
+                    <div id="cashierPaymentPanel" class="panel" hidden>
+                        <h2>Encaisser une réservation</h2>
+                        <p id="cashierReservationInfo"></p>
+
+                        <form id="cashierPaymentForm" class="form-grid">
+                            <input id="cashierReservationId" type="hidden">
+
+                            <div>
+                                <label for="cashierPaymentAmount">
+                                    Montant total à encaisser
+                                </label>
+                                <input id="cashierPaymentAmount" type="number"
+                                    min="1" step="1" required readonly>
+                            </div>
+
+                            <div>
+                                <label for="cashierPaymentMethod">
+                                    Mode de paiement
+                                </label>
+                                <select id="cashierPaymentMethod" required>
+                                    <option value="CASH">Espèces</option>
+                                    <option value="MOBILE">Paiement mobile</option>
+                                    <option value="CARD">Carte bancaire</option>
+                                </select>
+                            </div>
+
+                            <button type="submit">
+                                Confirmer le paiement intégral
+                            </button>
+
+                            <button id="closeCashierPaymentBtn" type="button">
+                                Fermer
+                            </button>
+                        </form>
+
+                        <div id="cashierPaymentResult"></div>
+                    </div>
+
+                    <!-- Historique visible par le Caissier et le Responsable -->
+                    <div class="panel">
+                        <div class="section-header">
+                            <div>
+                                <h2>Historique des paiements</h2>
+                                <p>
+                                    Consultation des paiements enregistrés.
+                                </p>
+                            </div>
+
+                            <button id="refreshPaymentsBtn" type="button">
+                                Actualiser
+                            </button>
+                        </div>
+
+                        <!-- Résumé des recettes -->
+                        <div id="paymentRevenueSummary" class="revenue-summary">
+                            <div class="revenue-item">
+                                <span>Total encaissé</span>
+                                <strong id="paymentTotalRevenue">0 FCFA</strong>
+                            </div>
+
+                            <div class="revenue-item">
+                                <span>Nombre de paiements</span>
+                                <strong id="paymentTotalCount">0</strong>
+                            </div>
+                        </div>
+
+                        <!-- Détail des paiements -->
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Référence paiement</th>
+                                        <th>Réservation</th>
+                                        <th>Voyageur</th>
+                                        <th>Montant</th>
+                                        <th>Mode</th>
+                                        <th>Date</th>
+                                        <th>Caissier</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="paymentRows"></tbody>
+                            </table>
+                        </div>
+
+                        <p id="paymentEmpty" class="empty-state"></p>
+                    </div>
+                </section>
+
+                <!-- RESSOURCES -->
+                <section id="page-resources" class="page" hidden>
+
+                    <!-- Création d'itinéraire : EXPLOITATION UNIQUEMENT -->
+                    <div id="routeCreatePanel" class="panel">
+                        <h2>Créer un itinéraire</h2>
+
+                        <form id="routeForm" class="form-grid">
+                            <div>
+                                <label for="routeOrigin">Ville de départ</label>
+                                <input id="routeOrigin"
+                                    placeholder="Ville de départ" required>
+                            </div>
+
+                            <div>
+                                <label for="routeDestination">Destination</label>
+                                <input id="routeDestination"
+                                    placeholder="Destination" required>
+                            </div>
+
+                            <div>
+                                <label for="routeDistance">Distance en km</label>
+                                <input id="routeDistance" type="number" min="0"
+                                    placeholder="Distance en km">
+                            </div>
+
+                            <div>
+                                <label for="routeDuration">Durée en minutes</label>
+                                <input id="routeDuration" type="number" min="0"
+                                    placeholder="Durée en minutes">
+                            </div>
+
+                            <button type="submit">Créer l'itinéraire</button>
+                        </form>
+                    </div>
+
+                    <!-- Ajout chauffeur : EXPLOITATION UNIQUEMENT -->
+                    <div id="driverCreatePanel" class="panel">
+                        <h2>Ajouter un chauffeur</h2>
+
+                        <form id="driverForm" class="form-grid">
+                            <div>
+                                <label for="driverFirstName">Prénom</label>
+                                <input id="driverFirstName"
+                                    placeholder="Prénom" required>
+                            </div>
+
+                            <div>
+                                <label for="driverLastName">Nom</label>
+                                <input id="driverLastName"
+                                    placeholder="Nom" required>
+                            </div>
+
+                            <div>
+                                <label for="driverPhone">Téléphone</label>
+                                <input id="driverPhone" placeholder="Téléphone">
+                            </div>
+
+                            <div>
+                                <label for="driverLicense">Numéro de permis</label>
+                                <input id="driverLicense"
+                                    placeholder="Numéro de permis" required>
+                            </div>
+
+                            <button type="submit">Ajouter le chauffeur</button>
+                        </form>
+                    </div>
+
+                    <!-- Ajout véhicule : EXPLOITATION UNIQUEMENT -->
+                    <div id="vehicleCreatePanel" class="panel">
+                        <h2>Ajouter un véhicule</h2>
+
+                        <form id="vehicleForm" class="form-grid">
+                            <div>
+                                <label for="vehicleRegistration">
+                                    Immatriculation
+                                </label>
+                                <input id="vehicleRegistration"
+                                    placeholder="Immatriculation" required>
+                            </div>
+
+                            <div>
+                                <label for="vehicleBrand">Marque</label>
+                                <input id="vehicleBrand" placeholder="Marque">
+                            </div>
+
+                            <div>
+                                <label for="vehicleModel">Modèle</label>
+                                <input id="vehicleModel" placeholder="Modèle">
+                            </div>
+
+                            <div>
+                                <label for="vehicleCapacity">Capacité</label>
+                                <input id="vehicleCapacity" type="number" min="1"
+                                    placeholder="Capacité" required>
+                            </div>
+
+                            <button type="submit">Ajouter le véhicule</button>
+                        </form>
+                    </div>
+
+                    <!-- Programmation des départs : EXPLOITATION UNIQUEMENT -->
+                    <div id="tripCreatePanel" class="panel">
+                        <h2 id="tripFormTitle">Programmer un départ</h2>
+
+                        <form id="tripForm" class="form-grid">
+                            <div>
+                                <label for="tripRoute">Itinéraire</label>
+                                <select id="tripRoute" required>
+                                    <option value="">Choisir un itinéraire</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="tripAgency">Agence</label>
+                                <select id="tripAgency" required>
+                                    <option value="">Choisir une agence</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="tripVehicle">Véhicule</label>
+                                <select id="tripVehicle" required>
+                                    <option value="">Choisir un véhicule</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="tripDriver">Chauffeur</label>
+                                <select id="tripDriver" required>
+                                    <option value="">Choisir un chauffeur</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="tripDeparture">Départ</label>
+                                <input id="tripDeparture"
+                                    type="datetime-local" required>
+                            </div>
+
+                            <div>
+                                <label for="tripArrival">Arrivée</label>
+                                <input id="tripArrival" type="datetime-local">
+                            </div>
+
+                            <div>
+                                <label for="tripPrice">Prix en FCFA</label>
+                                <input id="tripPrice" type="number"
+                                    min="1" required>
+                            </div>
+
+                            <div>
+                                <label for="tripNotes">Notes</label>
+                                <textarea id="tripNotes"></textarea>
+                            </div>
+
+                            <button type="submit">Enregistrer le départ</button>
+                        </form>
+                    </div>
+
+                    <!-- Listes consultables par Exploitation et Responsable -->
+                    <div class="panel">
+                        <h2>Itinéraires enregistrés</h2>
+                        <div id="routeList" class="cards-grid"></div>
+                    </div>
+
+                    <div class="panel">
+                        <h2>Chauffeurs enregistrés</h2>
+                        <div id="driverList" class="cards-grid"></div>
+                    </div>
+
+                    <div class="panel">
+                        <h2>Véhicules enregistrés</h2>
+                        <div id="vehicleList" class="cards-grid"></div>
+                    </div>
+                </section>
+
+                <!-- UTILISATEURS : CONSULTATION RESPONSABLE -->
+                <section id="page-users" class="page" hidden>
+                    <div class="panel">
+                        <div class="section-header">
+                            <div>
+                                <h2>Liste des utilisateurs</h2>
+                                <p>
+                                    Consultation des comptes et de leurs rôles.
+                                </p>
+                            </div>
+
+                            <button id="refreshUsersBtn" type="button">
+                                Actualiser
+                            </button>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Identifiant</th>
+                                        <th>Nom complet</th>
+                                        <th>Email</th>
+                                        <th>Rôle</th>
+                                        <th>Agence</th>
+                                        <th>Statut</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="userRows"></tbody>
+                            </table>
+                        </div>
+
+                        <p id="userEmpty" class="empty-state"></p>
+                    </div>
+                </section>
+
+                <!-- AGENCES : CONSULTATION RESPONSABLE -->
+                <section id="page-agencies" class="page" hidden>
+                    <div class="panel">
+                        <div class="section-header">
+                            <div>
+                                <h2>Agences de la compagnie</h2>
+                                <p>
+                                    Consultation des agences enregistrées.
+                                </p>
+                            </div>
+
+                            <button id="refreshAgenciesBtn" type="button">
+                                Actualiser
+                            </button>
+                        </div>
+
+                        <div id="agencyRows" class="cards-grid"></div>
+                    </div>
+                </section>
+
+            </main>
+        </div>
+    </section>
+
+    <div id="toast" role="status" aria-live="polite"></div>
+
+    <script src="js/api.js"></script>
+    <script src="js/app.js"></script>
 </body>
 </html>

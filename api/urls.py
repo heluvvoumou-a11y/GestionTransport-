@@ -3,6 +3,7 @@ from django.urls import path, include
 
 from .views import (
     MeView,
+    DashboardView,
     UserViewSet,
     AgencyViewSet,
     RouteViewSet,
@@ -12,11 +13,9 @@ from .views import (
     TripViewSet,
     ReservationViewSet,
     PaymentViewSet,
-    RefundViewSet,
     TicketViewSet,
     LuggageViewSet,
 )
-
 
 router = DefaultRouter()
 
@@ -42,22 +41,35 @@ router.register("seats", SeatViewSet, basename="seat")
 router.register("trips", TripViewSet, basename="trip")
 
 # Gestion des réservations
-router.register("reservations", ReservationViewSet, basename="reservation")
+router.register(
+    "reservations",
+    ReservationViewSet,
+    basename="reservation",
+)
 
 # Gestion des paiements
-router.register("payments", PaymentViewSet, basename="payment")
-
-# Gestion des remboursements
-router.register("refunds", RefundViewSet, basename="refund")
+router.register(
+    "payments",
+    PaymentViewSet,
+    basename="payment",
+)
 
 # Gestion des billets
-router.register("tickets", TicketViewSet, basename="ticket")
+router.register(
+    "tickets",
+    TicketViewSet,
+    basename="ticket",
+)
 
 # Gestion des bagages
-router.register("luggage", LuggageViewSet, basename="luggage")
-
+router.register(
+    "luggage",
+    LuggageViewSet,
+    basename="luggage",
+)
 
 urlpatterns = [
     path("me/", MeView.as_view(), name="api-me"),
+    path("dashboard/", DashboardView.as_view(), name="api-dashboard"),
     path("", include(router.urls)),
 ]

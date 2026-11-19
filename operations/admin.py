@@ -1,3 +1,33 @@
 from django.contrib import admin
-from .models import *
-admin.site.register([Agency, Route, Driver, Vehicle, Seat, Trip, Reservation, Payment, Ticket, Boarding, Refund, Luggage, CashSession, CashEntry])
+
+from .models import (
+    Agency,
+    Route,
+    Driver,
+    Vehicle,
+    Seat,
+    Trip,
+    Reservation,
+    Payment,
+    Ticket,
+    Boarding,
+    Luggage,
+    CashSession,
+    CashEntry,
+)
+
+admin.site.register([
+    Agency,
+    Route,
+    Driver,
+    Vehicle,
+    Seat,
+    Trip,
+    Reservation,
+    Payment,
+    Ticket,
+    Boarding,
+    Luggage,
+    CashSession,
+    CashEntry,
+])

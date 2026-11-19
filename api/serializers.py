@@ -1,11 +1,22 @@
 from django.contrib.auth import get_user_model
 from django.db import transaction
+from django.db.models import Sum, Q
+from django.utils import timezone
+
 from rest_framework import serializers
 
 from accounts.models import UserProfile
 from operations.models import (
-    Agency, Route, Driver, Vehicle, Seat, Trip, Reservation,
-    Payment, Ticket, Refund, Luggage,
+    Agency,
+    Route,
+    Driver,
+    Vehicle,
+    Seat,
+    Trip,
+    Reservation,
+    Payment,
+    Ticket,
+    Luggage,
 )
 
 User = get_user_model()
@@ -22,8 +33,13 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = (
-            "id", "username", "first_name", "last_name",
-            "email", "role", "agency_id"
+            "id",
+            "username",
+            "first_name",
+            "last_name",
+            "email",
+            "role",
+            "agency_id",
         )
 
     def get_role(self, obj):
@@ -39,20 +55,20 @@ class UserManagementSerializer(serializers.ModelSerializer):
     role = serializers.ChoiceField(
         choices=UserProfile.ROLES,
         required=False,
-        write_only=True
+        write_only=True,
     )
 
     agency_id = serializers.PrimaryKeyRelatedField(
         queryset=Agency.objects.all(),
         required=False,
         allow_null=True,
-        write_only=True
+        write_only=True,
     )
 
     password = serializers.CharField(
         write_only=True,
         min_length=8,
-        required=False
+        required=False,
     )
 
     class Meta:
@@ -83,7 +99,9 @@ class UserManagementSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         if self.instance is None and not attrs.get("password"):
             raise serializers.ValidationError({
-                "password": "Le mot de passe est obligatoire à la création."
+                "password": (
+                    "Le mot de passe est obligatoire à la création."
+                )
             })
 
         return attrs
@@ -96,13 +114,13 @@ class UserManagementSerializer(serializers.ModelSerializer):
 
         user = User.objects.create_user(
             password=password,
-            **validated_data
+            **validated_data,
         )
 
         UserProfile.objects.create(
             user=user,
             role=role,
-            agency=agency
+            agency=agency,
         )
 
         return user
@@ -110,7 +128,10 @@ class UserManagementSerializer(serializers.ModelSerializer):
     @transaction.atomic
     def update(self, instance, validated_data):
         role = validated_data.pop("role", None)
-        agency = validated_data.pop("agency_id", serializers.empty)
+        agency = validated_data.pop(
+            "agency_id",
+            serializers.empty,
+        )
         password = validated_data.pop("password", None)
 
         for attribute, value in validated_data.items():
@@ -123,7 +144,7 @@ class UserManagementSerializer(serializers.ModelSerializer):
 
         profile, created = UserProfile.objects.get_or_create(
             user=instance,
-            defaults={"role": "AGENT"}
+            defaults={"role": "AGENT"},
         )
 
         if role is not None:
@@ -168,7 +189,7 @@ class DriverSerializer(serializers.ModelSerializer):
 
 
 # ==========================================
-# GESTION DES VÉHICULES
+# GESTION DES VEHICULES
 # ==========================================
 
 class VehicleSerializer(serializers.ModelSerializer):
@@ -177,6 +198,10 @@ class VehicleSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
+# ==========================================
+# GESTION DES PLACES
+# ==========================================
+
 class SeatSerializer(serializers.ModelSerializer):
     class Meta:
         model = Seat
@@ -184,14 +209,29 @@ class SeatSerializer(serializers.ModelSerializer):
 
 
 # ==========================================
-# GESTION DES DÉPARTS
+# GESTION DES DEPARTS
 # ==========================================
 
 class TripSerializer(serializers.ModelSerializer):
-    route_detail = RouteSerializer(source="route", read_only=True)
-    agency_detail = AgencySerializer(source="agency", read_only=True)
-    vehicle_detail = VehicleSerializer(source="vehicle", read_only=True)
-    driver_detail = DriverSerializer(source="driver", read_only=True)
+    route_detail = RouteSerializer(
+        source="route",
+        read_only=True,
+    )
+
+    agency_detail = AgencySerializer(
+        source="agency",
+        read_only=True,
+    )
+
+    vehicle_detail = VehicleSerializer(
+        source="vehicle",
+        read_only=True,
+    )
+
+    driver_detail = DriverSerializer(
+        source="driver",
+        read_only=True,
+    )
 
     available_seats = serializers.SerializerMethodField()
 
@@ -201,22 +241,38 @@ class TripSerializer(serializers.ModelSerializer):
         read_only_fields = ("created_at",)
 
     def get_available_seats(self, obj):
-        occupied = obj.reservations.filter(
-            status__in=("HOLD", "CONFIRMED")
+        now = timezone.now()
+
+        occupied_seats = obj.reservations.filter(
+            Q(status="CONFIRMED") |
+            Q(
+                status="HOLD",
+                hold_expires_at__gt=now,
+            )
         ).values_list("seat_id", flat=True)
 
         return obj.vehicle.seats.exclude(
-            id__in=occupied
+            id__in=occupied_seats
         ).count()
 
 
 # ==========================================
-# GESTION DES RÉSERVATIONS
+# GESTION DES RESERVATIONS
 # ==========================================
 
 class ReservationSerializer(serializers.ModelSerializer):
-    trip_detail = TripSerializer(source="trip", read_only=True)
-    seat_detail = SeatSerializer(source="seat", read_only=True)
+    trip_detail = TripSerializer(
+        source="trip",
+        read_only=True,
+    )
+
+    seat_detail = SeatSerializer(
+        source="seat",
+        read_only=True,
+    )
+
+    paid_amount = serializers.SerializerMethodField()
+    remaining_amount = serializers.SerializerMethodField()
 
     class Meta:
         model = Reservation
@@ -229,19 +285,71 @@ class ReservationSerializer(serializers.ModelSerializer):
             "created_at",
         )
 
+    def get_paid_amount(self, obj):
+        total = obj.payments.aggregate(
+            total=Sum("amount")
+        )["total"]
+
+        return total or 0
+
+    def get_remaining_amount(self, obj):
+        paid = self.get_paid_amount(obj)
+
+        return max(obj.amount - paid, 0)
+
 
 # ==========================================
 # GESTION DES PAIEMENTS
 # ==========================================
 
 class PaymentSerializer(serializers.ModelSerializer):
+    reservation_detail = ReservationSerializer(
+        source="reservation",
+        read_only=True,
+    )
+
+    passenger_name = serializers.CharField(
+        source="reservation.passenger_name",
+        read_only=True,
+    )
+
+    received_by_name = serializers.SerializerMethodField()
+
     class Meta:
         model = Payment
         fields = (
-            "id", "reservation", "amount", "method",
-            "reference", "paid_at"
+            "id",
+            "reservation",
+            "reservation_detail",
+            "passenger_name",
+            "amount",
+            "method",
+            "reference",
+            "paid_at",
+            "received_by",
+            "received_by_name",
         )
-        read_only_fields = ("id", "reference", "paid_at")
+
+        read_only_fields = (
+            "id",
+            "reference",
+            "paid_at",
+            "received_by",
+            "received_by_name",
+        )
+
+    def get_received_by_name(self, obj):
+        user = obj.received_by
+
+        if not user:
+            return "Non renseigné"
+
+        full_name = (
+            f"{user.first_name or ''} "
+            f"{user.last_name or ''}"
+        ).strip()
+
+        return full_name or user.username
 
 
 # ==========================================
@@ -249,43 +357,28 @@ class PaymentSerializer(serializers.ModelSerializer):
 # ==========================================
 
 class TicketSerializer(serializers.ModelSerializer):
+    reservation_detail = ReservationSerializer(
+        source="reservation",
+        read_only=True,
+    )
+
+    code = serializers.SerializerMethodField()
+
     class Meta:
         model = Ticket
-        fields = ("id", "reservation", "code", "issued_at", "checked")
-        read_only_fields = fields
-
-
-# ==========================================
-# GESTION DES REMBOURSEMENTS
-# ==========================================
-
-class RefundSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Refund
         fields = (
             "id",
             "reservation",
-            "amount",
-            "reason",
-            "reference",
-            "status",
-            "requested_by",
-            "approved_by",
-            "refunded_by",
-            "created_at",
-            "reviewed_at",
+            "reservation_detail",
+            "code",
+            "issued_at",
+            "checked",
         )
 
-        read_only_fields = (
-            "id",
-            "reference",
-            "status",
-            "requested_by",
-            "approved_by",
-            "refunded_by",
-            "created_at",
-            "reviewed_at",
-        )
+        read_only_fields = fields
+
+    def get_code(self, obj):
+        return obj.code
 
 
 # ==========================================
@@ -296,4 +389,7 @@ class LuggageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Luggage
         fields = "__all__"
-        read_only_fields = ("tag", "created_at")
+        read_only_fields = (
+            "tag",
+            "created_at",
+        )
