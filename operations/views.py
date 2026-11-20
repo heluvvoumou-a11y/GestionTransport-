@@ -102,8 +102,10 @@ def trip_create(request):
 
 @login_required
 def reservation_create(request):
-    form = ReservationForm(request.POST or None)
-
+    form = ReservationForm(
+    request.POST or None,
+    initial={"trip": request.GET.get("trip")}
+    )
     if request.method == "POST" and form.is_valid():
         try:
             reservation = create_reservation(

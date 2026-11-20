@@ -1,0 +1,16 @@
+﻿venv/
+.venv/
+.git/
+.github/
+__pycache__/
+*.py[cod]
+*.sqlite3
+.env
+staticfiles/
+.pytest_cache/
+.coverage
+.idea/
+.vscode/
+
+transitgo_data.json
+db_before_postgres.sqlite3

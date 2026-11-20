@@ -1,19 +1,47 @@
 from django import forms
 from .models import Reservation, Trip, Seat, Vehicle, Driver, Route, Agency
 
+
 class ReservationForm(forms.Form):
-    trip = forms.ModelChoiceField(queryset=Trip.objects.filter(status="PLANNED"))
-    seat = forms.ModelChoiceField(queryset=Seat.objects.none())
-    passenger_name = forms.CharField(max_length=160)
-    passenger_phone = forms.CharField(max_length=30)
+    trip = forms.ModelChoiceField(
+        queryset=Trip.objects.filter(status="PLANNED"),
+        label="Départ"
+    )
+    seat = forms.ModelChoiceField(
+        queryset=Seat.objects.none(),
+        label="Siège"
+    )
+    passenger_name = forms.CharField(
+        max_length=160,
+        label="Nom du passager"
+    )
+    passenger_phone = forms.CharField(
+        max_length=30,
+        label="Téléphone du passager"
+    )
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if self.data.get("trip"):
+
+        trip_id = (
+            self.data.get("trip")
+            if self.is_bound
+            else self.initial.get("trip")
+        )
+
+        if trip_id:
             try:
-                trip = Trip.objects.get(pk=self.data.get("trip"))
-                self.fields["seat"].queryset = Seat.objects.filter(vehicle=trip.vehicle)
-            except (Trip.DoesNotExist, ValueError):
+                trip = Trip.objects.get(
+                    pk=trip_id,
+                    status="PLANNED"
+                )
+                self.fields["seat"].queryset = Seat.objects.filter(
+                    vehicle=trip.vehicle
+                ).order_by("number")
+
+            except (Trip.DoesNotExist, ValueError, TypeError):
                 pass
+
 
 class PaymentForm(forms.Form):
     amount = forms.IntegerField(min_value=1, label="Montant (FCFA)")

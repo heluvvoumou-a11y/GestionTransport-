@@ -23,3 +23,11 @@ __pycache__/
 
 # Fichiers temporaires
 *.log
+
+# Export de données contenant des informations sensibles
+transitgo_data.json
+db_before_postgres.sqlite3
+
+# Sauvegardes et exports de données sensibles
+transitgo_data.json
+transitgo_data_utf8.json
