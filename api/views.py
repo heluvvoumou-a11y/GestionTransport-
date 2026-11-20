@@ -1,5 +1,7 @@
 from datetime import timedelta
-
+from rest_framework.permissions import AllowAny
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.exceptions import TokenError
 from django.contrib.auth import get_user_model
 from django.db.models import Sum, Q
 from django.utils import timezone
@@ -842,3 +844,29 @@ class LuggageViewSet(viewsets.ModelViewSet):
             )
 
         serializer.save()
+
+
+
+class TokenBlacklistView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        refresh_token = request.data.get("refresh")
+
+        if not refresh_token:
+            return Response(
+                {"detail": "Jeton de renouvellement manquant."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+        except TokenError:
+            return Response(
+                {"detail": "Jeton invalide ou déjà révoqué."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(status=status.HTTP_205_RESET_CONTENT)

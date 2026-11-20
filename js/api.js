@@ -8,6 +8,7 @@ const TransitAPI = {
     accessToken: sessionStorage.getItem("transitgo_access"),
     refreshToken: sessionStorage.getItem("transitgo_refresh"),
     currentUser: null,
+    refreshPromise: null,
 
     isAuthenticated() {
         return Boolean(this.accessToken);
@@ -97,53 +98,68 @@ const TransitAPI = {
     },
 
     async refreshAccessToken() {
+        if (this.refreshPromise) {
+            return this.refreshPromise;
+        }
+
         if (!this.refreshToken) return false;
 
-        try {
-            const response = await fetch(
-                `${API_BASE_URL}token/refresh/`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        refresh: this.refreshToken
-                    })
+        const currentRefreshToken = this.refreshToken;
+
+        this.refreshPromise = (async () => {
+            try {
+                const response = await fetch(
+                    `${API_BASE_URL}token/refresh/`,
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            refresh: currentRefreshToken
+                        })
+                    }
+                );
+
+                const data = await this.parseResponse(response);
+
+                if (
+                    !response.ok
+                    || !data.access
+                    || this.refreshToken !== currentRefreshToken
+                ) {
+                    if (this.refreshToken === currentRefreshToken) {
+                        this.clearSession();
+                    }
+                    return false;
                 }
-            );
 
-            const data = await this.parseResponse(response);
+                if (!data.refresh) {
+                    this.clearSession();
+                    return false;
+                }
 
-            if (!response.ok || !data.access) {
-                this.logout();
-                return false;
-            }
-
-            this.accessToken = data.access;
-
-            sessionStorage.setItem(
-                "transitgo_access",
-                data.access
-            );
-
-            if (data.refresh) {
+                this.accessToken = data.access;
                 this.refreshToken = data.refresh;
 
-                sessionStorage.setItem(
-                    "transitgo_refresh",
-                    data.refresh
-                );
+                sessionStorage.setItem("transitgo_access", data.access);
+                sessionStorage.setItem("transitgo_refresh", data.refresh);
+
+                return true;
+
+            } catch {
+                if (this.refreshToken === currentRefreshToken) {
+                    this.clearSession();
+                }
+                return false;
+
+            } finally {
+                this.refreshPromise = null;
             }
+        })();
 
-            return true;
-
-        } catch {
-            this.logout();
-            return false;
-        }
+        return this.refreshPromise;
     },
-
     async request(endpoint, options = {}, retry = true) {
         const headers = {
             ...(options.headers || {})
@@ -275,13 +291,39 @@ const TransitAPI = {
         return items;
     },
 
-    logout() {
+    clearSession() {
         this.accessToken = null;
         this.refreshToken = null;
         this.currentUser = null;
 
         sessionStorage.removeItem("transitgo_access");
         sessionStorage.removeItem("transitgo_refresh");
+    },
+
+    async logout() {
+        if (this.refreshPromise) {
+            await this.refreshPromise;
+        }
+
+        const refreshToken = this.refreshToken;
+
+        this.clearSession();
+
+        if (!refreshToken) return;
+
+        try {
+            await fetch(`${API_BASE_URL}token/logout/`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    refresh: refreshToken
+                })
+            });
+        } catch {
+            console.error("Échec de la révocation du jeton côté serveur.");
+        }
     }
 };
 

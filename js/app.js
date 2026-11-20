@@ -2072,8 +2072,8 @@ if ($("loginForm")) {
 ========================================================= */
 
 if ($("logoutBtn")) {
-    $("logoutBtn").addEventListener("click", () => {
-        API.logout();
+    $("logoutBtn").addEventListener("click", async () => {
+        await API.logout();
 
         currentUser = null;
         currentPage = "dashboard";
@@ -2132,7 +2132,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             error
         );
 
-        API.logout();
+        await API.logout();
 
         $("loginSection").hidden = false;
         $("appSection").hidden = true;

@@ -1,3 +1,7 @@
+import copy
+
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import Sum, Q
@@ -66,10 +70,10 @@ class UserManagementSerializer(serializers.ModelSerializer):
     )
 
     password = serializers.CharField(
-        write_only=True,
-        min_length=8,
-        required=False,
-    )
+    write_only=True,
+    min_length=12,
+    required=False,
+)
 
     class Meta:
         model = User
@@ -97,12 +101,32 @@ class UserManagementSerializer(serializers.ModelSerializer):
         return data
 
     def validate(self, attrs):
-        if self.instance is None and not attrs.get("password"):
+        password = attrs.get("password")
+
+        if self.instance is None and not password:
             raise serializers.ValidationError({
-                "password": (
-                    "Le mot de passe est obligatoire à la création."
-                )
+                "password": "Le mot de passe est obligatoire à la création."
             })
+
+        if password:
+            if self.instance is None:
+                candidate = User(**{
+                    key: value
+                    for key, value in attrs.items()
+                    if key in ("username", "first_name", "last_name", "email")
+                })
+            else:
+                candidate = copy.copy(self.instance)
+                for key, value in attrs.items():
+                    if key not in ("password", "role", "agency_id"):
+                        setattr(candidate, key, value)
+
+            try:
+                validate_password(password, user=candidate)
+            except DjangoValidationError as error:
+                raise serializers.ValidationError({
+                    "password": list(error.messages)
+                })
 
         return attrs
 
